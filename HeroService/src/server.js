@@ -6,7 +6,7 @@ import  dotenv from "dotenv";
 import http from "http";
 import connectDB from "./db/mongo.js";
 import heroRouter from "./routes/hero.route.js";
-// import coreRoutes from "./routes/core.js";
+import tagRoute from "./routes/tag.route.js";
 dotenv.config();
 
 const PORT = process.env.PORT;
@@ -26,7 +26,7 @@ app.use(
 
 
 app.use("/api/heroes", heroRouter);
-
+app.use("/api/tags", tagRoute)
 server.listen(PORT, async () => {
   console.log("server is running on PORT:" + PORT);
   await connectDB();
