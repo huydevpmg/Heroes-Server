@@ -1,18 +1,21 @@
 import express from 'express';
-import {
-  getTags,
-  createTag,
-  deleteTag,
-  getTagStyle,
-} from '../controllers/tag.controller.js';
+import * as HeroController from '../controllers/hero.controller.js';
 import { verifyAccessToken } from '../utils/verifyAccess.js';
 
-const tagRoute = express.Router();
+const router = express.Router();
 
-tagRoute.get('/', verifyAccessToken, getTags);
-tagRoute.post('/', verifyAccessToken, createTag);
-tagRoute.delete('/:id', verifyAccessToken, deleteTag);
+router.use(verifyAccessToken);
 
-tagRoute.get('/style', getTagStyle);
+router.get('/', HeroController.getAllHeroes);
+router.get('/owner', HeroController.getHeroesByOwner);
+router.get('/:id', HeroController.getHeroById);
+router.post('/', HeroController.createHero);
+router.post('/many', HeroController.addManyHeroes);
+router.put('/:id', HeroController.updateHero);
+router.put('/:id/tags', HeroController.updateHeroTags);
+router.patch('/:id/add-tag', HeroController.addTag);
+router.patch('/:id/remove-tag', HeroController.removeTag);
+router.delete('/:id', HeroController.deleteHero);
+router.delete('/', HeroController.deleteManyHeroes);
 
-export default tagRoute;
+export default router;

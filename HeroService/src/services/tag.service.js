@@ -1,34 +1,62 @@
 import Tag from '../models/tag.model.js';
 import Hero from '../models/hero.model.js';
-import { getTagStyle } from '../utils/tagStyle.util.js';
 
 export const getTagsByUser = async (userId) => {
-  const tags = await Tag.find({ owner: userId });
-  return tags;
+  return Tag.find({ owner: userId });
+};
+
+export const getTagById = async (tagId, userId) => {
+  const tag = await Tag.findOne({ _id: tagId, owner: userId });
+  if (!tag) {
+    throw new Error('Tag not found');
+  }
+  return tag;
 };
 
 export const createTag = async (name, userId) => {
   if (!name) {
     throw new Error('Tag name is required');
-  }   
+  }
 
-  const existingSameUser = await Tag.findOne({ name, owner: userId });
-  if (existingSameUser) {
+  const exists = await Tag.findOne({ name, owner: userId });
+  if (exists) {
     throw new Error('You already have a tag with this name');
   }
 
-  const existingGlobal = await Tag.findOne({ name });
-  const style = existingGlobal || getTagStyle(name);
+  const global = await Tag.findOne({ name });
 
   const newTag = new Tag({
     name,
-    color: style.color,
-    icon: style.icon,
     owner: userId,
   });
 
-  const savedTag = await newTag.save();
-  return savedTag;
+  return newTag.save();
+};
+
+export const updateTag = async (tagId, userId, data) => {
+  const { name, color, icon } = data;
+
+  const duplicate = await Tag.findOne({
+    name,
+    owner: userId,
+    _id: { $ne: tagId },
+  });
+
+  if (duplicate) {
+    throw new Error('Another tag with this name already exists');
+  }
+
+  const updated = await Tag.findOneAndUpdate(
+    { _id: tagId, owner: userId },
+    { $set: { name, color, icon } },
+    { new: true },
+  );
+
+  if (!updated) {
+    throw new Error('Tag not found');
+  }
+
+  return updated;
 };
 
 export const deleteTag = async (tagId, userId) => {
@@ -39,15 +67,4 @@ export const deleteTag = async (tagId, userId) => {
 
   await Hero.updateMany({ owner: userId }, { $pull: { tags: tag._id } });
   return tag;
-};
-
-export const getTagStyleSuggestion = async (name) => {
-  if (!name) {
-    throw new Error('Tag name is required');
-  }
-
-  const existing = await Tag.findOne({ name });
-  return existing
-    ? { color: existing.color, icon: existing.icon }
-    : getTagStyle(name);
 };

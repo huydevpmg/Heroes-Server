@@ -7,17 +7,8 @@ const TagSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    color: {
-      type: String,
-      required: true,
-    },
-    icon: {
-      type: String,
-      required: true,
-    },
     owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type: String,
       required: true,
       index: true,
     },

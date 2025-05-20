@@ -1,5 +1,5 @@
 import express from 'express';
-import { createHero, deleteHero, deleteManyHeroes, getAllHeroes, getHeroById, getHeroesByOwner, updateHero, updateHeroTags } from '../controllers/hero.controller.js';
+import { addTag, createHero, deleteHero, deleteManyHeroes, getAllHeroes, getHeroById, getHeroesByOwner, removeTag, updateHero, updateHeroTags } from '../controllers/hero.controller.js';
 import { verifyAccessToken } from '../utils/verifyAccess.js';
 const heroRouter = express.Router();
 
@@ -13,5 +13,8 @@ heroRouter.delete('/deleteHero/:id', deleteHero);
 
 heroRouter.delete('/bulk-delete', deleteManyHeroes);
 heroRouter.put('/update-tags/:id', updateHeroTags);
+
+heroRouter.patch('/:id/tags/add', addTag);
+heroRouter.patch('/:id/tags/remove', removeTag);
 
 export default heroRouter;
