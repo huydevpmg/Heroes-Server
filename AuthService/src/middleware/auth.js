@@ -4,14 +4,14 @@ import fs from "fs";
 const privateKey = fs.readFileSync("./keys/private.pem");  
 const publicKey = fs.readFileSync("./keys/public.pem");  
 
-export function generateAccessToken({ username, id }) {
-  return jwt.sign({ username, id }, privateKey, {
+export function generateAccessToken(user) {
+  return jwt.sign({ ...user }, privateKey, {
     algorithm: "RS256",
   });
 }
 
-export function generateRefreshToken({ username, id }) {
-  return jwt.sign({ username, id }, privateKey, {
+export function generateRefreshToken(user) {
+  return jwt.sign({ ...user }, privateKey, {
     algorithm: "RS256",
     expiresIn: "7d",
   });

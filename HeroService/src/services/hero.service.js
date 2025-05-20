@@ -49,10 +49,27 @@ export const updateHeroTagsService = async (id, ownerId, tags) => {
   return await hero.save();
 };
 
-export const addTagService = async (id, tag) => {
-  return await Hero.findByIdAndUpdate(id, { $addToSet: { tags: tag } }, { new: true });
+export const addTagsToManyHeroesService = async (heroIds, tags) => {
+  const objectIds = heroIds.map(id => new ObjectId(id));
+  return await Hero.updateMany(
+    { _id: { $in: objectIds } },
+    { $addToSet: { tags: { $each: tags } } }
+  );
 };
 
-export const removeTagService = async (id, tag) => {
-  return await Hero.findByIdAndUpdate(id, { $pull: { tags: tag } }, { new: true });
+export const bulkAddSingleTagToHeroesService = async (heroIds, tag) => {
+  const objectIds = heroIds.map(id => new ObjectId(id));
+  return await Hero.updateMany(
+    { _id: { $in: objectIds } },
+    { $addToSet: { tags: tag } }
+  );
+};
+
+
+export const bulkRemoveSingleTagFromHeroesService = async (heroIds, tag) => {
+  const objectIds = heroIds.map(id => new ObjectId(id));
+  return await Hero.updateMany(
+    { _id: { $in: objectIds } },
+    { $pull: { tags: tag } }
+  );
 };

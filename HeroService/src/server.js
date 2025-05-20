@@ -13,7 +13,6 @@ const PORT = process.env.PORT;
 const app = express();
 const server = http.createServer(app);
 
-app.use(json()); 
 app.use(express.json());
 app.use(cookieParser());
 app.use(
