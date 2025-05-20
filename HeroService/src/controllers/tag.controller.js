@@ -30,12 +30,12 @@ export const createTag = async (req, res) => {
 
 export const updateTag = async (req, res) => {
   try {
-    const { name, color, icon } = req.body;
+    const { name } = req.body;
 
     const tag = await TagService.updateTag(
       req.params.id,
       req.user.id,
-      { name, color, icon },
+      { name },
     );
 
     res.json(tag);

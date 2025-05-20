@@ -76,6 +76,7 @@ export const addManyHeroes = async (req, res) => {
 export const deleteManyHeroes = async (req, res) => {
   try {
     const ids = req.body.ids;
+    console.log(...ids);
     if (!Array.isArray(ids) || ids.length === 0)
       return res.status(400).json({ message: 'ids array is required' });
 
@@ -88,7 +89,8 @@ export const deleteManyHeroes = async (req, res) => {
 
 export const updateHeroTags = async (req, res) => {
   try {
-    const updated = await HeroService.updateHeroTagsService(req.params.id, req.user.username.id, req.body.tags);
+    console.log(req.user);
+    const updated = await HeroService.updateHeroTagsService(req.params.id, req.user.id, req.body.tags);
     if (!updated) return res.status(404).json({ message: 'Hero not found' });
     res.status(200).json(updated);
   } catch (error) {
@@ -96,22 +98,31 @@ export const updateHeroTags = async (req, res) => {
   }
 };
 
-export const addTag = async (req, res) => {
+
+export const bulkAddTagController = async (req, res) => {
+  const { heroIds, tag } = req.body;
+
+  if (!Array.isArray(heroIds) || !tag)
+    return res.status(400).json({ message: 'heroIds (array) and tag are required' });
+
   try {
-    const hero = await HeroService.addTagService(req.params.id, req.body.tag);
-    if (!hero) return res.status(404).json({ message: 'Hero not found' });
-    res.json(hero);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to add tag', error });
+    const result = await HeroService.bulkAddSingleTagToHeroesService(heroIds, tag);
+    res.status(200).json({ heroIds, tag });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add tag', error: err.message });
   }
 };
 
-export const removeTag = async (req, res) => {
+export const bulkRemoveTagController = async (req, res) => {
+  const { heroIds, tag } = req.body;
+
+  if (!Array.isArray(heroIds) || !tag)
+    return res.status(400).json({ message: 'heroIds (array) and tag are required' });
+
   try {
-    const hero = await HeroService.removeTagService(req.params.id, req.body.tag);
-    if (!hero) return res.status(404).json({ message: 'Hero not found' });
-    res.json(hero);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to remove tag', error });
+    const result = await HeroService.bulkRemoveSingleTagFromHeroesService(heroIds, tag);
+    res.status(200).json({ heroIds, tag });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to remove tag', error: err.message });
   }
 };
