@@ -126,3 +126,18 @@ export const bulkRemoveTagController = async (req, res) => {
     res.status(500).json({ message: 'Failed to remove tag', error: err.message });
   }
 };
+
+export const checkEmailExists = async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  try {
+    const exists = await HeroService.checkEmailExistsService(email);
+    res.status(200).json({ exists });
+  } catch (err) {
+    res.status(500).json({ message: 'Error checking email', error: err.message });
+  }
+};

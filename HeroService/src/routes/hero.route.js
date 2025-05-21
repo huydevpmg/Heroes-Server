@@ -1,5 +1,5 @@
 import express from 'express';
-import {  bulkAddTagController, bulkRemoveTagController, createHero, deleteHero, deleteManyHeroes, getAllHeroes, getHeroById, getHeroesByOwner, updateHero, updateHeroTags } from '../controllers/hero.controller.js';
+import {  bulkAddTagController, bulkRemoveTagController, checkEmailExists, createHero, deleteHero, deleteManyHeroes, getAllHeroes, getHeroById, getHeroesByOwner, updateHero, updateHeroTags } from '../controllers/hero.controller.js';
 import { verifyAccessToken } from '../middleware/verifyAccess.js';
 const heroRouter = express.Router();
 
@@ -17,6 +17,9 @@ heroRouter.put('/update-tags/:id', updateHeroTags);
 
 heroRouter.patch('/bulk/add-tag', bulkAddTagController);
 heroRouter.patch('/bulk/remove-tag', bulkRemoveTagController);
+
+
+heroRouter.get('/check-email', checkEmailExists);
 
 
 export default heroRouter;

@@ -68,3 +68,9 @@ export const deleteTag = async (tagId, userId) => {
   await Hero.updateMany({ owner: userId }, { $pull: { tags: tag._id } });
   return tag;
 };
+
+export const checkEmailExistsService = async (email) => {
+  if (!email) throw new Error('Email is required');
+  const hero = await Hero.findOne({ email });
+  return !!hero;
+};
