@@ -9,7 +9,7 @@ import heroRouter from "./routes/hero.route.js";
 import tagRoute from "./routes/tag.route.js";
 dotenv.config();
 
-const PORT = process.env.PORT;
+const PORT = process.env.HERO_PORT || process.env.PORT || 4000;
 const app = express();
 const server = http.createServer(app);
 
@@ -26,7 +26,8 @@ app.use(
 
 app.use("/api/heroes", heroRouter);
 app.use("/api/tags", tagRoute)
-server.listen(PORT, async () => {
-  console.log("server is running on PORT:" + PORT);
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log("Hero server is running on PORT: " + PORT);
   await connectDB();
 });
+

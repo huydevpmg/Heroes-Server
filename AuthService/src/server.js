@@ -9,7 +9,7 @@ import authRoute from "./routes/auth.route.js";
 import profileRoute from "./routes/profile.route.js";
 dotenv.config();
 
-const PORT = process.env.PORT;
+const PORT = process.env.AUTH_PORT || process.env.PORT || 5000;
 const app = express();
 const server = http.createServer(app);
 
@@ -27,7 +27,7 @@ app.use(
 app.use("/api/auth/", authRoute);
 app.use("/api/profile/", profileRoute);
 
-server.listen(PORT, async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log("server is running on PORT:" + PORT);
   await connectDB();
 });
