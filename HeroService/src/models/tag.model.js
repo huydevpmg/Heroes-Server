@@ -8,7 +8,7 @@ const TagSchema = new mongoose.Schema(
       trim: true,
     },
     owner: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
       index: true,
     },
