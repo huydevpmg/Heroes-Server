@@ -9,7 +9,6 @@ const UserConversationSchema = new mongoose.Schema(
     },
     userId: { 
       type: mongoose.Schema.Types.ObjectId, 
-      ref: "User", 
       required: true 
     },
     lastReadAt: { 
@@ -31,9 +30,10 @@ const UserConversationSchema = new mongoose.Schema(
       type: Boolean, 
       default: false 
     },
-    labels: [{ 
-      type: String,
-      default: []
+    labels: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Label",
+      default: [],
     }],
   },
   { timestamps: true }

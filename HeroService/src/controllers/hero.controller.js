@@ -20,9 +20,9 @@ export const getAllHeroes = async (req, res) => {
 
 export const getHeroesByOwner = async (req, res) => {
   try {
-    const { ownerId } = req.query;
-    if (!ownerId) return res.status(400).json({ message: 'ownerId is required' });
-
+    const { ownerId } = req.params;
+    if (!ownerId)
+      return res.status(400).json({ message: 'ownerId is required' });
     const heroes = await HeroService.getHeroesByOwnerService(ownerId);
     res.status(200).json(heroes);
   } catch (error) {

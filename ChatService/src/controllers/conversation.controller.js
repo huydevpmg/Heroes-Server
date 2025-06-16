@@ -1,26 +1,63 @@
-import { createGroupConversation, findOrCreate1on1Conversation } from "../services/conversation.service.js";
+import ConversationService from '../services/conversation.service.js';
 
-// POST /api/conversations/1on1
-export const connect1on1Conversation = async (req, res) => {
-  try {
-    // const { userId } = req.user;
-    const userId = "68464832d4a4d83463a4880e"
-    const { partnerId } = req.body;
-    const conversation = await findOrCreate1on1Conversation(userId, partnerId);
-    res.json({ success: true, conversation });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+class ConversationController {
+  constructor() {
+    this.conversationService = new ConversationService();
   }
-};
 
-// POST /api/conversations/group
-export const createGroup = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { name, members } = req.body;
-    const conversation = await createGroupConversation({ name, creator: userId, members });
-    res.status(201).json({ success: true, conversation });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+  createConversation = async (req, res) => {
+    try {
+      const { name, participants, isGroup, heroContext, createdBy } = req.body;
+      const conversation = await this.conversationService.createConversation({
+        name,
+        participants,
+        isGroup,
+        heroContext,
+        createdBy,
+      });
+      return res.status(201).json(conversation);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+
+  getConversations = async (req, res) => {
+    try {
+      const userId  = req.user.id;
+      const conversations = await this.conversationService.getConversations(userId);
+      return res.status(200).json(conversations);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+
+  getConversationById = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const conversation = await this.conversationService.getConversationById(id);
+      if (!conversation) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
+      return res.status(200).json(conversation);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+
+  findOrCreate1on1Conversation = async (req, res) => {
+    try {
+
+      const userId1 = req.user.id;
+      const { partnerId } = req.body;
+      const conversation = await this.conversationService.findOrCreate1on1Conversation(
+        userId1,
+        partnerId,
+      );
+      return res.status(200).json(conversation);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+}
+
+export default ConversationController; 

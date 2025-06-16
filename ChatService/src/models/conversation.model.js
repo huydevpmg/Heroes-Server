@@ -21,10 +21,10 @@ const conversationSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
     },
-    // lastMessage: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Message",
-    // },
+    lastMessage: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
   },
   { timestamps: true }
 );

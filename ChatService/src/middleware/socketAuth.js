@@ -22,6 +22,11 @@ const verifyToken = (token, callback) => {
 
 // Extract token from the request or socket headers
 const getToken = (request) => {
+  // Check auth object first
+  if (request.handshake?.auth?.token) {
+    return request.handshake.auth.token;
+  }
+  
   // HTTP request
   if (request.headers) {
     const authHeader = request.headers['authorization'];
@@ -65,16 +70,18 @@ export const socketAuth = (socket, next) => {
   const token = getToken(socket);
 
   if (!token) {
+    console.log('No token provided');
     return next(new Error('Authentication error: No token provided'));
   }
 
   verifyToken(token, (err, decoded) => {
     if (err || !decoded) {
+      console.log('Token verification failed:', err);
       return next(new Error('Authentication error: Invalid or expired token'));
     }
 
     // Attach user data to the socket
-    socket.userId = decoded.userId;
+    socket.userId = decoded.id; // Changed from userId to id to match token payload
     socket.username = decoded.username;
     next();
   });

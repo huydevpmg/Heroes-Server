@@ -1,39 +1,138 @@
+import axios from 'axios';
 import Conversation from '../models/conversation.model.js';
 import UserConversation from '../models/userConversation.model.js';
+import Message from '../models/message.model.js';
+import { emitToRoom } from '../lib/socket.js';
 
-export const findOrCreate1on1Conversation = async (userId1, userId2) => {
-  let conversation = await Conversation.findOne({
-    isGroup: false,
-    participants: { $all: [userId1, userId2], $size: 2 },
-  });
+class ConversationService {
+  constructor() {
+    this.authServiceUrl = 'http://localhost:4000/api';
+    this.heroServiceUrl = 'http://localhost:5000/api';
+  }
 
-  if (!conversation) {
-    conversation = await Conversation.create({
+  async createConversation(conversationData) {
+    const conversation = new Conversation(conversationData);
+    await conversation.save();
+
+    const userConversationPromises = conversationData.participants.map((userId) =>
+      UserConversation.create({
+        conversationId: conversation._id,
+        userId,
+      }),
+    );
+    await Promise.all(userConversationPromises);
+
+    conversationData.participants.forEach((userId) => {
+      emitToRoom(userId, 'new_conversation', conversation);
+    });
+
+    return conversation;
+  }
+
+  async getConversations(userId) {
+    const userConversations = await UserConversation.find({ userId })
+      .populate('conversationId')
+      .sort({ updatedAt: -1 });
+
+    return Promise.all(
+      userConversations.map(async (uc) => {
+        const conversation = uc.conversationId;
+        const enriched = await this.enrichConversationData(conversation, userId);
+        
+        return {
+          _id: conversation._id,
+          name: enriched.name,
+          avatar: enriched.avatar,
+          lastMessage: enriched.lastMessage,
+          updatedAt: conversation.updatedAt,
+          isPinned: uc.isPinned,
+          isArchived: uc.isArchived,
+          labels: uc.labels,
+          lastReadAt: uc.lastReadAt,
+        };
+      }),
+    );
+  }
+
+  async enrichConversationData(conversation, currentUserId) {
+    const participants = await Promise.all(
+      conversation.participants.map((id) => this.getUserData(id))
+    );
+
+    const lastMessage = conversation.lastMessage
+      ? await this.getMessageById(conversation.lastMessage)
+      : null;
+
+    let otherParticipant = null;
+    if (!conversation.isGroup) {
+      otherParticipant = participants.find(
+        (p) => p && p._id !== currentUserId.toString()
+      );
+    }
+
+    return {
+      participants,
+      lastMessage: lastMessage
+        ? {
+            content: lastMessage.content,
+            createdAt: lastMessage.createdAt,
+            senderId: lastMessage.senderId,
+          }
+        : null,
+      name: conversation.isGroup
+        ? conversation.name || 'Nhóm mới'
+        : otherParticipant?.fullName || 'Người dùng ẩn danh',
+      avatar: conversation.isGroup
+        ? conversation.groupAvatar || 'default-group.png'
+        : otherParticipant?.avatar || 'default-avatar.png',
+    };
+  }
+
+  async getUserData(userId) {
+    try {
+      const response = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
+      const { _id, fullName, username, email, avatar } = response.data;
+      return { _id, fullName, username, email, avatar };
+    } catch (error) {
+      console.error('❌ Error fetching user data:', error.message);
+      return null;
+    }
+  }
+
+  async getHeroData(heroId) {
+    try {
+      const response = await axios.get(`${this.heroServiceUrl}/heroes/${heroId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching hero data:', error.message);
+      return null;
+    }
+  }
+
+  async getConversationById(id) {
+    return Conversation.findById(id);
+  }
+
+  async getMessageById(messageId) {
+    return Message.findById(messageId);
+  }
+
+  async findOrCreate1on1Conversation(userId1, userId2) {
+    const existingConversation = await Conversation.findOne({
+      isGroup: false,
+      participants: { $all: [userId1, userId2] },
+    });
+
+    if (existingConversation) {
+      return existingConversation;
+    }
+
+    return this.createConversation({
       participants: [userId1, userId2],
       isGroup: false,
-      creator: userId1,
+      createdBy: userId1,
     });
-    await Promise.all([
-      UserConversation.create({ user: userId1, conversation: conversation._id }),
-      UserConversation.create({ user: userId2, conversation: conversation._id }),
-    ]);
   }
-  return conversation;
-};
+}
 
-export const createGroupConversation = async ({ name, creator, members }) => {
-  const conversation = await Conversation.create({
-    name,
-    participants: members,
-    isGroup: true,
-    creator,
-  });
-  await Promise.all(
-    members.map((userId) =>
-      UserConversation.create({ user: userId, conversation: conversation._id })
-    )
-  );
-  return conversation;
-};
-
-// ... thêm các hàm quản lý group/conversation khác nếu cần
+export default ConversationService;
