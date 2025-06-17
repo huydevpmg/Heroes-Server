@@ -5,7 +5,8 @@ import MessageService from '../services/message.service.js';
 import UserConversationService from '../services/userConversation.service.js';
 
 let io;
-let onlineUsers = {};  // Manage online/offline status
+const onlineUsers = {}; // { [userId]: Set([socketId, ...]) }
+
 const EVENTS = {
   CONNECTION: 'connection',
   DISCONNECT: 'disconnect',
@@ -25,6 +26,7 @@ const EVENTS = {
   ARCHIVE_CONVERSATION: 'archive_conversation',
   ADD_LABEL: 'add_label',
   REMOVE_LABEL: 'remove_label',
+  USER_JOINED_CONVERSATION: 'user_joined_conversation',
 };
 
 export const initSocket = (server) => {
@@ -33,25 +35,28 @@ export const initSocket = (server) => {
       origin: ['http://localhost:4200', 'http://localhost:43879'],
       methods: ['GET', 'POST'],
       credentials: true,
-      allowedHeaders: ['Authorization']
+      allowedHeaders: ['Authorization'],
     },
-    pingTimeout: 60000, // Increase ping timeout
-    pingInterval: 25000, // Increase ping interval
-    connectTimeout: 30000, // Increase connection timeout
-    transports: ['websocket'],
-    allowEIO3: true // Allow Engine.IO v3 clients
   });
 
-  io.use(socketAuth);  
+  io.use(socketAuth);
 
   const conversationService = new ConversationService();
   const messageService = new MessageService();
   const userConversationService = new UserConversationService();
 
   io.on(EVENTS.CONNECTION, (socket) => {
-    onlineUsers[socket.userId] = 'online';
-    io.emit(EVENTS.USER_STATUS_CHANGE, { userId: socket.userId, status: 'online' });
-    
+    // ---- ONLINE/OFFLINE MANAGEMENT ----
+    if (!onlineUsers[socket.userId]) {
+      onlineUsers[socket.userId] = new Set();
+    }
+    onlineUsers[socket.userId].add(socket.id);
+    if (onlineUsers[socket.userId].size === 1) {
+      io.emit(EVENTS.USER_STATUS_CHANGE, { userId: socket.userId, status: 'online' });
+    }
+
+    socket.emit(EVENTS.USER_STATUS_CHANGE, { onlineUsers: Object.keys(onlineUsers) });
+
     // Handle connection errors
     socket.on('error', (error) => {
       console.error(`Socket error for user ${socket.userId}:`, error);
@@ -59,23 +64,36 @@ export const initSocket = (server) => {
 
     // Handle disconnection
     socket.on('disconnect', (reason) => {
-      onlineUsers[socket.userId] = 'offline';
-      io.emit(EVENTS.USER_STATUS_CHANGE, { userId: socket.userId, status: 'offline' });
+      if (onlineUsers[socket.userId]) {
+        onlineUsers[socket.userId].delete(socket.id);
+        if (onlineUsers[socket.userId].size === 0) {
+          delete onlineUsers[socket.userId];
+          io.emit(EVENTS.USER_STATUS_CHANGE, { userId: socket.userId, status: 'offline' });
+        }
+      }
     });
 
-    socket.on(EVENTS.CONNECT_CONVERSATION,  async ({partnerId}, callback) => {
-      const conversation = await conversationService.findOrCreate1on1Conversation(socket.userId, partnerId);
-      if (conversation) {
-        socket.join(conversation._id.toString());
-        callback && callback({ success: true, conversationId: conversation._id.toString() });
-      } else {
-        console.error('Failed to find or create conversation');
+    // ---- MAIN EVENTS ----
+    socket.on(EVENTS.CONNECT_CONVERSATION, async ({ partnerId }, callback) => {
+      try {
+        const conversation = await conversationService.findOrCreate1on1Conversation(socket.userId, partnerId);
+        if (conversation) {
+          socket.join(conversation._id.toString());
+          callback && callback({ success: true, conversationId: conversation._id.toString() });
+        } else {
+          callback && callback({ success: false, message: 'Failed to find or create conversation' });
+        }
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
       }
-
     });
 
     socket.on(EVENTS.JOIN_ROOM, (conversationId) => {
       socket.join(conversationId);
+      socket.to(conversationId).emit(EVENTS.USER_JOINED_CONVERSATION, {
+        userId: socket.userId,
+        conversationId,
+      });
     });
 
     socket.on(EVENTS.SEND_MESSAGE, async (data, callback) => {
@@ -90,9 +108,8 @@ export const initSocket = (server) => {
           content,
           parentMessage,
           heroContext,
-          attachments
+          attachments,
         });
-        // Broadcast to all users in that room
         io.to(conversationId).emit(EVENTS.RECEIVE_MESSAGE, message);
         callback && callback({ success: true, message });
       } catch (error) {
@@ -108,51 +125,75 @@ export const initSocket = (server) => {
     });
 
     socket.on(EVENTS.MESSAGE_REACTION, async (data, callback) => {
-      const { messageId, emoji } = data;
-      const message = await messageService.addReaction(messageId, socket.userId, emoji);
-      io.to(message.conversationId).emit(EVENTS.MESSAGE_REACTION, {
-    messageId, userId: socket.userId, emoji
-  });
-  callback && callback({ success: true, message });    });
+      try {
+        const { messageId, emoji } = data;
+        const message = await messageService.addReaction(messageId, socket.userId, emoji);
+        io.to(message.conversationId).emit(EVENTS.MESSAGE_REACTION, { messageId, userId: socket.userId, emoji });
+        callback && callback({ success: true, message });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
+    });
 
     socket.on(EVENTS.REMOVE_REACTION, async (data, callback) => {
-      const { messageId } = data;
-      const message = await messageService.removeReaction(messageId, socket.userId);
-      callback && callback({ success: true, message });
+      try {
+        const { messageId } = data;
+        const message = await messageService.removeReaction(messageId, socket.userId);
+        io.to(message.conversationId).emit(EVENTS.REMOVE_REACTION, { messageId, userId: socket.userId });
+        callback && callback({ success: true, message });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.MARK_AS_READ, async (data, callback) => {
-      const { conversationId, messageId } = data;
-      const result = await userConversationService.markAsRead(
-        conversationId,
-        socket.userId,
-        messageId,
-      );
-      callback && callback({ success: true, result });
+      try {
+        const { conversationId, messageId } = data;
+        const result = await userConversationService.markAsRead(conversationId, socket.userId, messageId);
+        callback && callback({ success: true, result });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.PIN_CONVERSATION, async (data, callback) => {
-      const { conversationId } = data;
-      const result = await userConversationService.togglePin(conversationId, socket.userId);
-      callback && callback({ success: true, result });
+      try {
+        const { conversationId } = data;
+        const result = await userConversationService.togglePin(conversationId, socket.userId);
+        callback && callback({ success: true, result });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.ARCHIVE_CONVERSATION, async (data, callback) => {
-      const { conversationId } = data;
-      const result = await userConversationService.toggleArchive(conversationId, socket.userId);
-      callback && callback({ success: true, result });
+      try {
+        const { conversationId } = data;
+        const result = await userConversationService.toggleArchive(conversationId, socket.userId);
+        callback && callback({ success: true, result });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.ADD_LABEL, async (data, callback) => {
-      const { conversationId, label } = data;
-      const result = await userConversationService.addLabel(conversationId, socket.userId, label);
-      callback && callback({ success: true, result });
+      try {
+        const { conversationId, label } = data;
+        const result = await userConversationService.addLabel(conversationId, socket.userId, label);
+        callback && callback({ success: true, result });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.REMOVE_LABEL, async (data, callback) => {
-      const { conversationId, label } = data;
-      const result = await userConversationService.removeLabel(conversationId, socket.userId, label);
-      callback && callback({ success: true, result });
+      try {
+        const { conversationId, label } = data;
+        const result = await userConversationService.removeLabel(conversationId, socket.userId, label);
+        callback && callback({ success: true, result });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
     });
 
     socket.on(EVENTS.GROUP_CREATED, (groupData) => {
@@ -166,9 +207,7 @@ export const initSocket = (server) => {
 };
 
 export const getIO = () => {
-  if (!io) {
-    throw new Error('Socket.IO not initialized');
-  }
+  if (!io) throw new Error('Socket.IO not initialized');
   return io;
 };
 

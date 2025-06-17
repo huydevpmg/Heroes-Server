@@ -18,7 +18,7 @@ router.get('/', protectRoute, conversationController.getConversations);
 router.get('/:id', protectRoute, conversationController.getConversationById);
 
 //PUT update conversation
-// router.put('/:id', protectRoute, conversationController.updateConversation);
+router.patch('/:id', protectRoute, conversationController.updateConversation);
 
 //DELETE conversation
 // router.delete('/:id', protectRoute, conversationController.deleteConversation);

@@ -5,36 +5,53 @@
  *     Conversation:
  *       type: object
  *       required:
- *         - type
- *         - members
+ *         - participants
  *       properties:
  *         _id:
  *           type: string
  *           description: The auto-generated id of the conversation
- *         type:
- *           type: string
- *           enum: [1ON1, GROUP]
- *           description: Type of conversation
  *         name:
  *           type: string
- *           description: Name of the conversation (for group chats)
+ *           description: Name of the conversation
  *         avatar:
  *           type: string
  *           description: Avatar URL of the conversation
- *         members:
+ *         participants:
  *           type: array
  *           items:
  *             type: string
- *           description: Array of member user IDs
+ *           description: Array of participant user IDs
+ *         isGroup:
+ *           type: boolean
+ *           description: Whether this is a group conversation
  *         lastMessage:
- *           type: string
- *           description: ID of the last message
- *         createdAt:
- *           type: string
- *           format: date-time
+ *           type: object
+ *           properties:
+ *             content:
+ *               type: string
+ *             senderId:
+ *               type: string
+ *             createdAt:
+ *               type: string
+ *               format: date-time
  *         updatedAt:
  *           type: string
  *           format: date-time
+ *         isPinned:
+ *           type: boolean
+ *           description: Whether the conversation is pinned
+ *         isArchived:
+ *           type: boolean
+ *           description: Whether the conversation is archived
+ *         labels:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array of labels for the conversation
+ *         lastReadAt:
+ *           type: string
+ *           format: date-time
+ *           description: Last time the conversation was read
  */
 
 /**
@@ -59,11 +76,11 @@
  *           schema:
  *             type: object
  *             required:
- *               - partnerId
+ *               - participantId
  *             properties:
- *               partnerId:
+ *               participantId:
  *                 type: string
- *                 description: ID of the partner user
+ *                 description: ID of the participant user
  *     responses:
  *       200:
  *         description: Conversation found or created successfully
@@ -90,17 +107,13 @@
  *           schema:
  *             type: object
  *             required:
- *               - type
- *               - members
+ *               - participants
  *             properties:
- *               type:
- *                 type: string
- *                 enum: [GROUP]
  *               name:
  *                 type: string
  *               avatar:
  *                 type: string
- *               members:
+ *               participants:
  *                 type: array
  *                 items:
  *                   type: string

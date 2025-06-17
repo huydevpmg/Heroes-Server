@@ -46,13 +46,26 @@ class ConversationController {
 
   findOrCreate1on1Conversation = async (req, res) => {
     try {
-
       const userId1 = req.user.id;
       const { partnerId } = req.body;
       const conversation = await this.conversationService.findOrCreate1on1Conversation(
         userId1,
         partnerId,
       );
+      return res.status(200).json(conversation);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+
+  updateConversation = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      const conversation = await this.conversationService.updateConversation(id, updateData);
+      if (!conversation) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
       return res.status(200).json(conversation);
     } catch (error) {
       return res.status(500).json({ message: error.message });

@@ -49,6 +49,8 @@ class ConversationService {
           isArchived: uc.isArchived,
           labels: uc.labels,
           lastReadAt: uc.lastReadAt,
+          participants: conversation.participants,
+          isGroup: conversation.isGroup
         };
       }),
     );
@@ -132,6 +134,25 @@ class ConversationService {
       isGroup: false,
       createdBy: userId1,
     });
+  }
+
+  async updateConversation(id, updateData) {
+    try {
+      const conversation = await Conversation.findByIdAndUpdate(
+        id,
+        { $set: updateData },
+        { new: true }
+      );
+
+      if (!conversation) {
+        return null;
+      }
+
+      return conversation;
+    } catch (error) {
+      console.error('Error updating conversation:', error);
+      throw new Error('Error updating conversation');
+    }
   }
 }
 
