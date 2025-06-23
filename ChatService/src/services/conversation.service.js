@@ -1,29 +1,30 @@
-import axios from 'axios';
-import Conversation from '../models/conversation.model.js';
-import UserConversation from '../models/userConversation.model.js';
-import Message from '../models/message.model.js';
-import { emitToRoom } from '../lib/socket.js';
+import axios from "axios";
+import Conversation from "../models/conversation.model.js";
+import UserConversation from "../models/userConversation.model.js";
+import Message from "../models/message.model.js";
+import { emitToRoom } from "../lib/socket.js";
 
 class ConversationService {
   constructor() {
-    this.authServiceUrl = 'http://localhost:4000/api';
-    this.heroServiceUrl = 'http://localhost:5000/api';
+    this.authServiceUrl = "http://localhost:4000/api";
+    this.heroServiceUrl = "http://localhost:5000/api";
   }
 
   async createConversation(conversationData) {
     const conversation = new Conversation(conversationData);
     await conversation.save();
 
-    const userConversationPromises = conversationData.participants.map((userId) =>
-      UserConversation.create({
-        conversationId: conversation._id,
-        userId,
-      }),
+    const userConversationPromises = conversationData.participants.map(
+      (userId) =>
+        UserConversation.create({
+          conversationId: conversation._id,
+          userId,
+        })
     );
     await Promise.all(userConversationPromises);
 
     conversationData.participants.forEach((userId) => {
-      emitToRoom(userId, 'new_conversation', conversation);
+      emitToRoom(userId, "new_conversation", conversation);
     });
 
     return conversation;
@@ -31,14 +32,17 @@ class ConversationService {
 
   async getConversations(userId) {
     const userConversations = await UserConversation.find({ userId })
-      .populate('conversationId')
+      .populate("conversationId")
       .sort({ updatedAt: -1 });
 
     return Promise.all(
       userConversations.map(async (uc) => {
         const conversation = uc.conversationId;
-        const enriched = await this.enrichConversationData(conversation, userId);
-        
+        const enriched = await this.enrichConversationData(
+          conversation,
+          userId
+        );
+
         return {
           _id: conversation._id,
           name: enriched.name,
@@ -50,9 +54,9 @@ class ConversationService {
           labels: uc.labels,
           lastReadAt: uc.lastReadAt,
           participants: conversation.participants,
-          isGroup: conversation.isGroup
+          isGroup: conversation.isGroup,
         };
-      }),
+      })
     );
   }
 
@@ -82,31 +86,35 @@ class ConversationService {
           }
         : null,
       name: conversation.isGroup
-        ? conversation.name || 'Nhóm mới'
-        : otherParticipant?.fullName || 'Người dùng ẩn danh',
+        ? conversation.name || "Nhóm mới"
+        : otherParticipant?.fullName || "Người dùng ẩn danh",
       avatar: conversation.isGroup
-        ? conversation.groupAvatar || 'default-group.png'
-        : otherParticipant?.avatar || 'default-avatar.png',
+        ? conversation.groupAvatar || "default-group.png"
+        : otherParticipant?.avatar || "default-avatar.png",
     };
   }
 
   async getUserData(userId) {
     try {
-      const response = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
+      const response = await axios.get(
+        `${this.authServiceUrl}/profile/${userId}`
+      );
       const { _id, fullName, username, email, avatar } = response.data;
       return { _id, fullName, username, email, avatar };
     } catch (error) {
-      console.error('❌ Error fetching user data:', error.message);
+      console.error("❌ Error fetching user data:", error.message);
       return null;
     }
   }
 
   async getHeroData(heroId) {
     try {
-      const response = await axios.get(`${this.heroServiceUrl}/heroes/${heroId}`);
+      const response = await axios.get(
+        `${this.heroServiceUrl}/heroes/${heroId}`
+      );
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching hero data:', error.message);
+      console.error("❌ Error fetching hero data:", error.message);
       return null;
     }
   }
@@ -150,8 +158,18 @@ class ConversationService {
 
       return conversation;
     } catch (error) {
-      console.error('Error updating conversation:', error);
-      throw new Error('Error updating conversation');
+      console.error("Error updating conversation:", error);
+      throw new Error("Error updating conversation");
+    }
+  }
+
+  async getAllUsers() {
+    try {
+      const response = await axios.get(`${this.authServiceUrl}/profile`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      throw new Error("Error fetching users");
     }
   }
 }

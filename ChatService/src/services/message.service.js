@@ -6,20 +6,16 @@ import axios from 'axios';
 
 class MessageService {
   constructor() {
-    // Use the same URLs as in ConversationService
     this.authServiceUrl = 'http://localhost:4000/api';
     this.heroServiceUrl = 'http://localhost:5000/api';
   }
 
-  // Create a new message
   async createMessage(messageData) {
     try {
-      // Validate required fields
       if (!messageData.conversationId || !messageData.senderId || !messageData.content) {
         throw new Error('Missing required fields');
       }
 
-      // Create message object
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
@@ -40,7 +36,6 @@ class MessageService {
         { new: true }
       );
 
-      // Update user conversations
       await UserConversation.updateMany(
         {
           conversationId: messageData.conversationId,
@@ -57,7 +52,6 @@ class MessageService {
     }
   }
 
-  // Get all messages for a conversation, excluding the current user's deleted messages
   async getMessages(conversationId, currentUserId) {
     let messages = await Message.find({
       conversationId,
@@ -76,13 +70,10 @@ class MessageService {
       ...new Set(messages.flatMap((m) => (m.reactions || []).map((r) => r.userId?.toString()))),
     ];
 
-    // Combine all unique user IDs involved in the messages
     const allUserIds = [...new Set([...senderIds, ...reactionUserIds])];
     let users = {};
 
-    // Fetch user profiles for all involved user IDs
     if (allUserIds.length) {
-      // Call the profile API for each userId (since batch API is not available)
       await Promise.all(
       allUserIds.map(async (userId) => {
         try {
@@ -105,7 +96,6 @@ class MessageService {
 
     let heroes = {};
     if (heroIds.length) {
-      // Call API to get hero details by IDs (using GET /heroes/:id for each hero)
       await Promise.all(
       heroIds.map(async (heroId) => {
         try {
@@ -114,14 +104,12 @@ class MessageService {
           heroes[heroId] = data.hero;
         }
         } catch (err) {
-        // Handle error or skip hero if not found
         heroes[heroId] = null;
         }
       })
       );
     }
 
-    // Enrich each message with sender data, parent message, hero context, and reactions
     const result = messages.map((msg) => ({
       ...msg,
       sender: users[msg.senderId?.toString()] || null,
@@ -138,7 +126,6 @@ class MessageService {
     return result;
   }
 
-  // Update the status of a message (e.g., read/unread, delivered, etc.)
   async updateMessageStatus(messageId, status) {
     const message = await Message.findByIdAndUpdate(messageId, { status }, { new: true });
 
@@ -152,12 +139,10 @@ class MessageService {
     return message;
   }
 
-  // Mark a message as globally deleted
   async deleteMessageGlobally(messageId) {
     return Message.updateOne({ _id: messageId }, { $set: { isDeleteGlobal: true } });
   }
 
-  // Mark a message as deleted for a specific user
   async deleteMessagePersonally(messageId, userId) {
     return Message.updateOne(
       { _id: messageId },
@@ -165,12 +150,10 @@ class MessageService {
     );
   }
 
-  // Add a reaction (emoji) to a message
   async addReaction(messageId, userId, emoji) {
     const message = await Message.findById(messageId);
     if (!message) return null;
 
-    // Check if the user already reacted, if so, update their reaction
     const existingReaction = message.reactions.find((r) => r.userId.toString() === userId);
     if (existingReaction) {
       existingReaction.emoji = emoji;
@@ -187,16 +170,13 @@ class MessageService {
     return message;
   }
 
-  // Remove a reaction from a message
   async removeReaction(messageId, userId) {
     const message = await Message.findById(messageId);
     if (!message) return null;
 
-    // Filter out the user's reaction
     message.reactions = message.reactions.filter((r) => r.userId.toString() !== userId);
     await message.save();
 
-    // Emit socket event to notify all participants
     emitToRoom(message.conversationId, 'message_reaction_removed', {
       messageId,
       userId,

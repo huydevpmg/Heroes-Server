@@ -47,10 +47,10 @@ class ConversationController {
   findOrCreate1on1Conversation = async (req, res) => {
     try {
       const userId1 = req.user.id;
-      const { partnerId } = req.body;
+      const { participantId } = req.body;
       const conversation = await this.conversationService.findOrCreate1on1Conversation(
         userId1,
-        partnerId,
+        participantId,
       );
       return res.status(200).json(conversation);
     } catch (error) {
@@ -71,6 +71,17 @@ class ConversationController {
       return res.status(500).json({ message: error.message });
     }
   };
+
+  getAllUsers = async(req, res) => {
+    try {
+      const users = await this.conversationService.getAllUsers();
+      return res.status(200).json(users);
+    } 
+    catch (error) {
+      console.error('Error fetching users:', error);
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+  }
 }
 
 export default ConversationController; 

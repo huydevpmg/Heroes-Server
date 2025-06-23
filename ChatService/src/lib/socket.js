@@ -46,7 +46,8 @@ export const initSocket = (server) => {
   const userConversationService = new UserConversationService();
 
   io.on(EVENTS.CONNECTION, (socket) => {
-    // ---- ONLINE/OFFLINE MANAGEMENT ----
+    socket.join(socket.userId);
+
     if (!onlineUsers[socket.userId]) {
       onlineUsers[socket.userId] = new Set();
     }
@@ -62,7 +63,6 @@ export const initSocket = (server) => {
       console.error(`Socket error for user ${socket.userId}:`, error);
     });
 
-    // Handle disconnection
     socket.on('disconnect', (reason) => {
       if (onlineUsers[socket.userId]) {
         onlineUsers[socket.userId].delete(socket.id);
@@ -73,7 +73,6 @@ export const initSocket = (server) => {
       }
     });
 
-    // ---- MAIN EVENTS ----
     socket.on(EVENTS.CONNECT_CONVERSATION, async ({ partnerId }, callback) => {
       try {
         const conversation = await conversationService.findOrCreate1on1Conversation(socket.userId, partnerId);
@@ -197,7 +196,7 @@ export const initSocket = (server) => {
     });
 
     socket.on(EVENTS.GROUP_CREATED, (groupData) => {
-      groupData.members.forEach((memberId) => {
+      groupData.participants.forEach((memberId) => {
         io.to(memberId).emit(EVENTS.NEW_GROUP, groupData);
       });
     });

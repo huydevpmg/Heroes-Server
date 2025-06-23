@@ -20,6 +20,8 @@ router.get('/:id', protectRoute, conversationController.getConversationById);
 //PUT update conversation
 router.patch('/:id', protectRoute, conversationController.updateConversation);
 
+router.get('/users', protectRoute, conversationController.getAllUsers);
+
 //DELETE conversation
 // router.delete('/:id', protectRoute, conversationController.deleteConversation);
 
