@@ -5,32 +5,34 @@
  *     Attachment:
  *       type: object
  *       required:
- *         - type
+ *         - name
  *         - url
- *         - userId
+ *         - type
+ *         - size
+ *         - uploadedBy
+ *         - conversationId
  *       properties:
  *         _id:
  *           type: string
  *           description: The auto-generated id of the attachment
- *         type:
+ *         name:
  *           type: string
- *           enum: [IMAGE, VIDEO, FILE, AUDIO]
- *           description: Type of attachment
+ *           description: Original file name
  *         url:
  *           type: string
  *           description: URL of the attachment
- *         fileName:
- *           type: string
- *           description: Original file name
- *         fileSize:
- *           type: number
- *           description: Size of the file in bytes
- *         mimeType:
+ *         type:
  *           type: string
  *           description: MIME type of the file
- *         userId:
+ *         size:
+ *           type: number
+ *           description: Size of the file in bytes
+ *         uploadedBy:
  *           type: string
  *           description: ID of the user who uploaded the attachment
+ *         conversationId:
+ *           type: string
+ *           description: ID of the conversation
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -42,18 +44,16 @@
 /**
  * @swagger
  * tags:
- *   name: Attachments
- *   description: Attachment management API
+ *   - name: Attachments
+ *     description: Attachment management API
  */
 
 /**
  * @swagger
  * /api/attachments:
  *   post:
- *     summary: Upload a new attachment
+ *     summary: Upload a new attachment (file upload to GCS)
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -62,10 +62,18 @@
  *             type: object
  *             required:
  *               - file
+ *               - conversationId
+ *               - uploadedBy
  *             properties:
  *               file:
  *                 type: string
  *                 format: binary
+ *               conversationId:
+ *                 type: string
+ *                 description: ID of the conversation
+ *               uploadedBy:
+ *                 type: string
+ *                 description: ID of the user uploading the file
  *     responses:
  *       201:
  *         description: Attachment uploaded successfully
@@ -73,6 +81,8 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Attachment'
+ *       400:
+ *         description: Missing required fields
  *       500:
  *         description: Server error
  */
@@ -81,21 +91,14 @@
  * @swagger
  * /api/attachments:
  *   get:
- *     summary: Get all attachments
+ *     summary: Get all attachments (optionally by conversationId)
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: page
+ *         name: conversationId
  *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
+ *           type: string
+ *         description: Filter by conversationId
  *     responses:
  *       200:
  *         description: List of attachments
@@ -113,28 +116,21 @@
  * @swagger
  * /api/attachments/type:
  *   get:
- *     summary: Get attachments by type
+ *     summary: Get attachments by type in a conversation
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
+ *       - in: query
+ *         name: conversationId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Conversation ID
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
- *           enum: [IMAGE, VIDEO, FILE, AUDIO]
  *         required: true
- *         description: Type of attachment
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
+ *         description: MIME type (e.g. image/png, application/pdf)
  *     responses:
  *       200:
  *         description: List of attachments by type
@@ -154,8 +150,6 @@
  *   get:
  *     summary: Get an attachment by ID
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -182,8 +176,6 @@
  *   delete:
  *     summary: Delete an attachment
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -206,8 +198,6 @@
  *   get:
  *     summary: Get attachments by user ID
  *     tags: [Attachments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -215,16 +205,6 @@
  *           type: string
  *         required: true
  *         description: User ID
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
  *     responses:
  *       200:
  *         description: List of user's attachments
@@ -236,4 +216,4 @@
  *                 $ref: '#/components/schemas/Attachment'
  *       500:
  *         description: Server error
- */ 
+ */

@@ -8,6 +8,15 @@ class MessageController {
   createMessage = async (req, res) => {
     try {
       const { conversationId, senderId, content, parentMessage, heroContext, attachments } = req.body;
+      // console.log('Creating message:', {
+      //   conversationId,
+      //   senderId,    
+      //   content,
+      //   parentMessage,
+      //   heroContext,
+      //   attachments,
+      // });co
+
       const message = await this.messageService.createMessage({
         conversationId,
         senderId,

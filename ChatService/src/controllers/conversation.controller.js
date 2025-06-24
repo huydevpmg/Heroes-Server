@@ -14,6 +14,7 @@ class ConversationController {
         isGroup,
         heroContext,
         createdBy,
+        attachments: [],
       });
       return res.status(201).json(conversation);
     } catch (error) {

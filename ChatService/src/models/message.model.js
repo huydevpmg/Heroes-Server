@@ -4,7 +4,7 @@ const messageSchema = new mongoose.Schema(
     {
         content: { 
             type: String, 
-            required: true 
+            required: false
         },
         senderId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -29,12 +29,11 @@ const messageSchema = new mongoose.Schema(
                 required: false,
             }
         ],
-        attachments: [
-            { 
-                type: mongoose.Schema.Types.ObjectId, 
-                ref: "Attachment" 
-            }
-        ],
+        attachments: {
+            type: [mongoose.Schema.Types.ObjectId],
+            ref: 'Attachment',
+            default: []
+        },
         reactions: [
             {
                 userId: { 

@@ -25,6 +25,12 @@ const conversationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
     },
+    attachments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Attachment',
+      },
+    ],
   },
   { timestamps: true }
 );

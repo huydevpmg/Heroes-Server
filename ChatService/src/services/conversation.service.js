@@ -55,6 +55,7 @@ class ConversationService {
           lastReadAt: uc.lastReadAt,
           participants: conversation.participants,
           isGroup: conversation.isGroup,
+          attachments: conversation.attachments || [],
         };
       })
     );

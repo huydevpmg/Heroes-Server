@@ -7,15 +7,12 @@ class AttachmentController {
 
   createAttachment = async (req, res) => {
     try {
-      const { name, url, type, size, uploadedBy, conversationId } = req.body;
-      const attachment = await this.attachmentService.createAttachment({
-        name,
-        url,
-        type,
-        size,
-        uploadedBy,
-        conversationId,
-      });
+      const { conversationId, uploadedBy } = req.body;
+      const file = req.file;
+      if (!file || !conversationId || !uploadedBy) {
+        return res.status(400).json({ message: 'Missing file, conversationId hoặc uploadedBy' });
+      }
+      const attachment = await this.attachmentService.createAttachment({ file, conversationId, uploadedBy });
       return res.status(201).json(attachment);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -79,4 +76,4 @@ class AttachmentController {
   };
 }
 
-export default AttachmentController; 
+export default AttachmentController;

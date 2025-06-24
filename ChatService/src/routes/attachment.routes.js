@@ -1,14 +1,17 @@
 import express from 'express';
+import multer from 'multer';
 import AttachmentController from '../controllers/attachment.controller.js';
 
 const router = express.Router();
-const attachmentController = new AttachmentController();
+const upload = multer({ dest: 'uploads/' });
 
-router.post('/', attachmentController.createAttachment);
-router.get('/', attachmentController.getAttachments);
-router.get('/type', attachmentController.getAttachmentsByType);
-router.get('/:id', attachmentController.getAttachmentById);
-router.delete('/:id', attachmentController.deleteAttachment);
-router.get('/user/:userId', attachmentController.getAttachmentsByUser);
+const controller = new AttachmentController();
 
-export default router; 
+router.post('/', upload.single('file'), controller.createAttachment);
+router.get('/', controller.getAttachments);
+router.get('/type', controller.getAttachmentsByType);
+router.get('/:id', controller.getAttachmentById);
+router.delete('/:id', controller.deleteAttachment);
+router.get('/user/:userId', controller.getAttachmentsByUser);
+
+export default router;

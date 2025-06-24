@@ -3,19 +3,21 @@ import Conversation from '../models/conversation.model.js';
 import UserConversation from '../models/userConversation.model.js';
 import { emitToRoom } from '../lib/socket.js';
 import axios from 'axios';
+import Attachment from '../models/attachment.model.js';
+import FormData from 'form-data';
+import fs from 'fs';
+import AttachmentService from './attachment.service.js';
 
 class MessageService {
   constructor() {
     this.authServiceUrl = 'http://localhost:4000/api';
     this.heroServiceUrl = 'http://localhost:5000/api';
+    this.attachmentService = new AttachmentService();
+
   }
 
   async createMessage(messageData) {
     try {
-      if (!messageData.conversationId || !messageData.senderId || !messageData.content) {
-        throw new Error('Missing required fields');
-      }
-
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
@@ -48,7 +50,7 @@ class MessageService {
 
       return savedMessage;
     } catch (error) {
-      throw error;
+      throw new Error('Error creating message: ' + error.message);
     }
   }
 
@@ -59,6 +61,7 @@ class MessageService {
       deletedForUserIds: { $ne: currentUserId },
     })
       .sort({ createdAt: 1 })
+      .populate('attachments')
       .lean();
 
     // Extract unique sender IDs, parent message IDs, hero IDs, and reaction user IDs
