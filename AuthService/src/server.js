@@ -24,8 +24,8 @@ app.use(
 );
 
 
-app.use("/api/auth/", authRoute);
-app.use("/api/profile/", profileRoute);
+app.use("/api/auth", authRoute);
+app.use("/api/profile", profileRoute);
 
 server.listen(PORT, '0.0.0.0', async () => {
   console.log("server is running on PORT:" + PORT);

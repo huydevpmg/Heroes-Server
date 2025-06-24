@@ -76,7 +76,6 @@ export const addManyHeroes = async (req, res) => {
 export const deleteManyHeroes = async (req, res) => {
   try {
     const ids = req.body.ids;
-    console.log(...ids);
     if (!Array.isArray(ids) || ids.length === 0)
       return res.status(400).json({ message: 'ids array is required' });
 

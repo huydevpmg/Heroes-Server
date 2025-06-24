@@ -5,11 +5,10 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm install && npm install -g nodemon
 
 COPY . .
 
-# Mở port (tuỳ app bạn chạy cổng nào)
-EXPOSE 4000
+EXPOSE 8080
 
-CMD ["node", "src/server.js"]
+CMD ["nodemon", "src/server.js"]
