@@ -53,7 +53,7 @@ class ConversationService {
           isArchived: uc.isArchived,
           labels: uc.labels,
           lastReadAt: uc.lastReadAt,
-          participants: conversation.participants,
+          participants: enriched.participants,
           isGroup: conversation.isGroup,
           attachments: conversation.attachments || [],
         };
