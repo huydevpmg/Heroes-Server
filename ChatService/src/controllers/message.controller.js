@@ -7,23 +7,15 @@ class MessageController {
 
   createMessage = async (req, res) => {
     try {
-      const { conversationId, senderId, content, parentMessage, heroContext, attachments } = req.body;
-      // console.log('Creating message:', {
-      //   conversationId,
-      //   senderId,    
-      //   content,
-      //   parentMessage,
-      //   heroContext,
-      //   attachments,
-      // });co
-
+      console.log('Creating message with data:', req.body);
+      const { conversationId, senderId, content, parentMessage, heroContext, attachmentId } = req.body;
       const message = await this.messageService.createMessage({
         conversationId,
         senderId,
         content,
         parentMessage,
         heroContext,
-        attachments,
+        attachmentId,
       });
       return res.status(201).json(message);
     } catch (error) {

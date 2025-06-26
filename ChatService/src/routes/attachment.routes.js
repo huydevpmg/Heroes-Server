@@ -1,9 +1,7 @@
 import express from 'express';
-import multer from 'multer';
 import AttachmentController from '../controllers/attachment.controller.js';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
 
 const controller = new AttachmentController();
 

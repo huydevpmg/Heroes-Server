@@ -97,7 +97,7 @@ export const initSocket = (server) => {
 
     socket.on(EVENTS.SEND_MESSAGE, async (data, callback) => {
       try {
-        const { conversationId, content, parentMessage, heroContext, attachments } = data;
+        const { conversationId, content, parentMessage, heroContext, attachmentId } = data;
         if (!conversationId || !content) {
           return callback && callback({ success: false, message: 'Invalid data' });
         }
@@ -107,7 +107,7 @@ export const initSocket = (server) => {
           content,
           parentMessage,
           heroContext,
-          attachments,
+          attachmentId,
         });
         io.to(conversationId).emit(EVENTS.RECEIVE_MESSAGE, message);
         callback && callback({ success: true, message });

@@ -40,5 +40,4 @@ const attachmentSchema = new mongoose.Schema(
   }
 );
 
-// Export Attachment model
 export default mongoose.model("Attachment", attachmentSchema);

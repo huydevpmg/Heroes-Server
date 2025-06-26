@@ -56,6 +56,7 @@ class ConversationService {
           participants: conversation.participants,
           isGroup: conversation.isGroup,
           attachments: conversation.attachments || [],
+          lastAttachmentName: conversation.lastAttachmentName || '',
         };
       })
     );
@@ -162,6 +163,14 @@ class ConversationService {
       console.error("Error updating conversation:", error);
       throw new Error("Error updating conversation");
     }
+  }
+
+  async updateLastAttachmentName(conversationId, lastAttachmentName) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { lastAttachmentName },
+      { new: true }
+    );
   }
 
   async getAllUsers() {

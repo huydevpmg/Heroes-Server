@@ -18,18 +18,21 @@ class MessageService {
 
   async createMessage(messageData) {
     try {
+      console.log('Creating message:', messageData);
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
         content: messageData.content,
-        parentMessage: messageData.parentMessage,
-        heroContext: messageData.heroContext || [],
-        attachments: messageData.attachments || [],
+        parentMessage: messageData.parentMessage || undefined,
+        heroContext: messageData.heroContext || undefined,
+        attachmentId: messageData.attachmentId || undefined,
         status: 'SENT'
       });
 
-      // Save message to DB
+      console.log('Message before saving:', message);
+
       const savedMessage = await message.save();
+      console.log('Saved message about to return:', savedMessage);
 
       // Update conversation's last message
       await Conversation.findByIdAndUpdate(
@@ -61,10 +64,8 @@ class MessageService {
       deletedForUserIds: { $ne: currentUserId },
     })
       .sort({ createdAt: 1 })
-      .populate('attachments')
       .lean();
 
-    // Extract unique sender IDs, parent message IDs, hero IDs, and reaction user IDs
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const parentMessageIds = messages.filter((m) => m.parentMessage)
       .map((m) => m.parentMessage?.toString());
