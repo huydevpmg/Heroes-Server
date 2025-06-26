@@ -1,4 +1,5 @@
 import LabelService from '../services/label.service.js';
+import { emitToRoom } from '../lib/socket.js';
 
 class LabelController {
   constructor() {
@@ -100,6 +101,13 @@ class LabelController {
         userId,
         labelId
       );
+
+      // Emit socket event after successful label addition
+      emitToRoom(userConversation.conversationId, 'add_label', {
+        userConversationId,
+        labelId,
+        userId
+      });
       
       return res.status(200).json(userConversation);
     } catch (error) {
@@ -124,6 +132,13 @@ class LabelController {
         userId,
         labelId
       );
+
+      // Emit socket event after successful label removal
+      emitToRoom(userConversation.conversationId, 'remove_label', {
+        userConversationId,
+        labelId,
+        userId
+      });
       
       return res.status(200).json(userConversation);
     } catch (error) {

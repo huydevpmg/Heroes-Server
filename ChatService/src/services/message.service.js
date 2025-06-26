@@ -1,7 +1,6 @@
 import Message from '../models/message.model.js';
 import Conversation from '../models/conversation.model.js';
 import UserConversation from '../models/userConversation.model.js';
-import { emitToRoom } from '../lib/socket.js';
 import axios from 'axios';
 import Attachment from '../models/attachment.model.js';
 import FormData from 'form-data';
@@ -60,8 +59,6 @@ class MessageService {
   async getMessages(conversationId, currentUserId) {
     let messages = await Message.find({
       conversationId,
-      isDeleteGlobal: false,
-      deletedForUserIds: { $ne: currentUserId },
     })
       .sort({ createdAt: 1 })
       .lean();
@@ -132,14 +129,6 @@ class MessageService {
 
   async updateMessageStatus(messageId, status) {
     const message = await Message.findByIdAndUpdate(messageId, { status }, { new: true });
-
-    if (message) {
-      emitToRoom(message.conversationId, 'message_status_updated', {
-        messageId,
-        status,
-      });
-    }
-
     return message;
   }
 
@@ -166,11 +155,6 @@ class MessageService {
     }
 
     await message.save();
-    emitToRoom(message.conversationId, 'message_reaction_added', {
-      messageId,
-      reaction: { userId, emoji },
-    });
-
     return message;
   }
 
@@ -180,13 +164,61 @@ class MessageService {
 
     message.reactions = message.reactions.filter((r) => r.userId.toString() !== userId);
     await message.save();
-
-    emitToRoom(message.conversationId, 'message_reaction_removed', {
-      messageId,
-      userId,
-    });
-
     return message;
+  }
+
+  // Update message content
+  async updateMessage(messageId, content) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        { content, updatedAt: new Date() },
+        { new: true }
+      );
+      
+      if (!message) return null;
+      return message;
+    } catch (error) {
+      throw new Error('Error updating message: ' + error.message);
+    }
+  }
+
+  // Delete message for everyone
+  async deleteMessageForEveryone(messageId) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        { 
+          isDeleteGlobal: true,
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+      
+      if (!message) return null;
+      return message;
+    } catch (error) {
+      throw new Error('Error deleting message globally: ' + error.message);
+    }
+  }
+
+  // Delete message for specific user
+  async deleteMessageForUser(messageId, userId) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        { 
+          $addToSet: { deletedForUserIds: userId },
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+      
+      if (!message) return null;
+      return message;
+    } catch (error) {
+      throw new Error('Error deleting message for user: ' + error.message);
+    }
   }
 }
 

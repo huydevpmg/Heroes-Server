@@ -1,4 +1,5 @@
 import AttachmentService from '../services/attachment.service.js';
+import { emitToRoom } from '../lib/socket.js';
 
 class AttachmentController {
   constructor() {
@@ -13,6 +14,13 @@ class AttachmentController {
         return res.status(400).json({ message: 'Missing file, conversationId hoặc uploadedBy' });
       }
       const attachment = await this.attachmentService.createAttachment({ file, conversationId, uploadedBy, fileName });
+      
+      // Emit socket event after successful attachment creation
+      emitToRoom(conversationId, 'attachment_created', {
+        attachment,
+        conversationId
+      });
+      
       return res.status(201).json(attachment);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -49,6 +57,14 @@ class AttachmentController {
       if (!attachment) {
         return res.status(404).json({ message: 'Attachment not found' });
       }
+
+      // Emit socket event after successful deletion
+      if (attachment.conversationId) {
+        emitToRoom(attachment.conversationId, 'attachment_deleted', {
+          attachmentId: id,
+        });
+      }
+
       return res.status(200).json({ message: 'Attachment deleted successfully' });
     } catch (error) {
       return res.status(500).json({ message: error.message });

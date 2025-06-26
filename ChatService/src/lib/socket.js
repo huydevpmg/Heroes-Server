@@ -27,6 +27,16 @@ const EVENTS = {
   ADD_LABEL: 'add_label',
   REMOVE_LABEL: 'remove_label',
   USER_JOINED_CONVERSATION: 'user_joined_conversation',
+
+  EDIT_MESSAGE: 'edit_message',
+  DELETE_MESSAGE: 'delete_message',
+  MESSAGE_UPDATED: 'message_updated',
+  MESSAGE_DELETED_GLOBAL: 'message_deleted_global',
+  MESSAGE_DELETED_PERSONAL: 'message_deleted_personal',
+
+  // Attachment events
+  ATTACHMENT_CREATED: 'attachment_created',
+  ATTACHMENT_DELETED: 'attachment_deleted',
 };
 
 export const initSocket = (server) => {
@@ -199,6 +209,77 @@ export const initSocket = (server) => {
       groupData.participants.forEach((memberId) => {
         io.to(memberId).emit(EVENTS.NEW_GROUP, groupData);
       });
+    });
+
+    // Edit message event
+    socket.on(EVENTS.EDIT_MESSAGE, async (data, callback) => {
+      try {
+        const { messageId, content } = data;
+        if (!content || !content.trim()) {
+          return callback && callback({ success: false, message: 'Content is required' });
+        }
+        
+        const message = await messageService.updateMessage(messageId, content.trim());
+        if (!message) {
+          return callback && callback({ success: false, message: 'Message not found' });
+        }
+        
+        io.to(message.conversationId).emit(EVENTS.MESSAGE_UPDATED, message);
+        callback && callback({ success: true, message });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
+    });
+
+    // Delete message event
+    socket.on(EVENTS.DELETE_MESSAGE, async (data, callback) => {
+      try {
+        const { messageId, deleteType } = data;
+        
+        if (!deleteType || !['everyone', 'justme'].includes(deleteType)) {
+          return callback && callback({ success: false, message: 'Invalid delete type' });
+        }
+        
+        let message;
+        if (deleteType === 'everyone') {
+          message = await messageService.deleteMessageForEveryone(messageId);
+          if (message) {
+            // Emit to all users in the conversation
+            io.to(message.conversationId).emit(EVENTS.MESSAGE_DELETED_GLOBAL, {
+              messageId,
+              conversationId: message.conversationId
+            });
+          }
+        } else {
+          message = await messageService.deleteMessageForUser(messageId, socket.userId);
+          if (message) {
+            // Emit only to the specific user
+            socket.emit(EVENTS.MESSAGE_DELETED_PERSONAL, {
+              messageId,
+              userId: socket.userId,
+              conversationId: message.conversationId
+            });
+          }
+        }
+        
+        if (!message) {
+          return callback && callback({ success: false, message: 'Message not found' });
+        }
+        
+        callback && callback({ success: true, message: 'Message deleted successfully' });
+      } catch (err) {
+        callback && callback({ success: false, message: err.message });
+      }
+    });
+
+    socket.on(EVENTS.ATTACHMENT_CREATED, (data) => {
+      const { conversationId, attachment } = data;
+      socket.to(conversationId).emit(EVENTS.ATTACHMENT_CREATED, { attachment });
+    });
+
+    socket.on(EVENTS.ATTACHMENT_DELETED, (data) => {
+      const { conversationId, attachmentId } = data;
+      socket.to(conversationId).emit(EVENTS.ATTACHMENT_DELETED, { attachmentId });
     });
   });
 
