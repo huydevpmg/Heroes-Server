@@ -4,15 +4,18 @@ import { uploadFileToGCS } from '../lib/gsc.js';
 import Conversation from '../models/conversation.model.js';
 
 class AttachmentService {
-  async createAttachment({ file, uploadedBy, conversationId }) {
+  async createAttachment({ file, uploadedBy, conversationId, fileName }) {
     if (!file || !conversationId || !uploadedBy) {
       throw new Error('Missing file, conversationId hoặc uploadedBy');
     }
     const destFileName = `${conversationId}/${file.originalname}`;
     const fileUrl = await uploadFileToGCS(file.path, destFileName);
 
+    // Use fileName if provided, otherwise use original filename
+    const attachmentName = fileName || file.originalname;
+
     const attachment = new Attachment({
-      name: file.originalname,
+      name: attachmentName,
       url: fileUrl,
       type: file.mimetype,
       size: file.size,

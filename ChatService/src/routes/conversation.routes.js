@@ -20,9 +20,12 @@ router.get('/:id', protectRoute, conversationController.getConversationById);
 //PUT update conversation
 router.patch('/:id', protectRoute, conversationController.updateConversation);
 
+// PATCH lastAttachmentName
+router.patch('/:id/last-attachment', protectRoute, conversationController.updateLastAttachmentName);
+
 router.get('/users', protectRoute, conversationController.getAllUsers);
 
 //DELETE conversation
 // router.delete('/:id', protectRoute, conversationController.deleteConversation);
 
-export default router; 
+export default router;

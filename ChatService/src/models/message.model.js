@@ -29,10 +29,9 @@ const messageSchema = new mongoose.Schema(
                 required: false,
             }
         ],
-        attachments: {
-            type: [mongoose.Schema.Types.ObjectId],
+        attachmentId: {
+            type: mongoose.Schema.Types.ObjectId,
             ref: 'Attachment',
-            default: []
         },
         reactions: [
             {

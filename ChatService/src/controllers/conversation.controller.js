@@ -83,6 +83,17 @@ class ConversationController {
       return res.status(500).json({ message: 'Internal Server Error' });
     }
   }
+
+  updateLastAttachmentName = async (req, res) => {
+    const { id } = req.params;
+    const { lastAttachmentName } = req.body;
+    try {
+      const conversation = await this.conversationService.updateLastAttachmentName(id, lastAttachmentName);
+      res.json(conversation);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
 }
 
-export default ConversationController; 
+export default ConversationController;
