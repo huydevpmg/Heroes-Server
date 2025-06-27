@@ -1,4 +1,4 @@
-import UserConversation from '../models/userConversation.model.js';
+import UserConversation from "../models/userConversation.model.js";
 
 class UserConversationService {
   // Update UserConversation information
@@ -11,13 +11,13 @@ class UserConversationService {
       );
 
       if (!userConversation) {
-        throw new Error('User conversation not found or no permission');
+        throw new Error("User conversation not found or no permission");
       }
 
       return userConversation;
     } catch (error) {
-      console.error('Error updating user conversation:', error);
-      throw new Error('Error updating user conversation');
+      console.error("Error updating user conversation:", error);
+      throw new Error("Error updating user conversation");
     }
   }
 
@@ -37,14 +37,16 @@ class UserConversationService {
         userId: userId,
       });
 
-      if (!userConversation) return null;
+      if (!userConversation) {
+        return null;
+      }
 
       return this.updateUserConversation(userConversationId, userId, {
         isPinned: !userConversation.isPinned,
       });
     } catch (error) {
-      console.error('Error toggling pin:', error);
-      throw new Error('Error toggling pin');
+      console.error("Error toggling pin:", error);
+      throw new Error("Error toggling pin");
     }
   }
 
@@ -64,8 +66,8 @@ class UserConversationService {
         isArchived: !userConversation.isArchived,
       });
     } catch (error) {
-      console.error('Error toggling archive:', error);
-      throw new Error('Error toggling archive');
+      console.error("Error toggling archive:", error);
+      throw new Error("Error toggling archive");
     }
   }
 
@@ -76,7 +78,9 @@ class UserConversationService {
       userId: userId,
     });
 
-    if (!userConversation) return null;
+    if (!userConversation) {
+      return null;
+    }
 
     const labels = userConversation.labels || [];
     if (!labels.includes(label)) {
@@ -93,7 +97,9 @@ class UserConversationService {
       userId: userId,
     });
 
-    if (!userConversation) return null;
+    if (!userConversation) {
+      return null;
+    }
 
     const labels = (userConversation.labels || []).filter((l) => l !== label);
 

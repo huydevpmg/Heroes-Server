@@ -1,5 +1,6 @@
 import UserConversationService from '../services/userConversation.service.js';
-import { emitToRoom } from '../lib/socket.js';
+import { emitToRoom } from '../lib/socket/index.js';
+import { EVENTS } from '../lib/socket/events.enum.js';
 
 class UserConversationController {
   constructor() {
@@ -40,7 +41,7 @@ class UserConversationController {
       }
 
       // Emit socket event after successful mark as read
-      emitToRoom(result.conversationId, 'mark_as_read', {
+      emitToRoom(result.conversationId, EVENTS.MARK_AS_READ, {
         userConversationId,
         messageId,
         userId,
@@ -63,7 +64,7 @@ class UserConversationController {
       }
 
       // Emit socket event after successful pin toggle
-      emitToRoom(result.conversationId, 'pin_conversation', {
+      emitToRoom(result.conversationId, EVENTS.PIN_CONVERSATION, {
         userConversationId,
         isPinned: result.isPinned,
         userId
@@ -85,7 +86,7 @@ class UserConversationController {
       }
 
       // Emit socket event after successful archive toggle
-      emitToRoom(result.conversationId, 'archive_conversation', {
+      emitToRoom(result.conversationId, EVENTS.ARCHIVE_CONVERSATION, {
         userConversationId,
         isArchived: result.isArchived,
         userId
@@ -108,7 +109,7 @@ class UserConversationController {
       }
 
       // Emit socket event after successful label addition
-      emitToRoom(result.conversationId, 'add_label', {
+      emitToRoom(result.conversationId, EVENTS.ADD_LABEL, {
         userConversationId,
         label,
         userId
@@ -131,7 +132,7 @@ class UserConversationController {
       }
 
       // Emit socket event after successful label removal
-      emitToRoom(result.conversationId, 'remove_label', {
+      emitToRoom(result.conversationId, EVENTS.REMOVE_LABEL, {
         userConversationId,
         label,
         userId

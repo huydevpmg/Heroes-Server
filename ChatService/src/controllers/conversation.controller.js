@@ -1,5 +1,6 @@
 import ConversationService from '../services/conversation.service.js';
-import { emitToRoom } from '../lib/socket.js';
+import { emitToRoom } from '../lib/socket/index.js';
+import { EVENTS } from '../lib/socket/events.enum.js';
 
 class ConversationController {
   constructor() {
@@ -20,7 +21,7 @@ class ConversationController {
 
       // Emit socket event for group creation
       if (isGroup) {
-        emitToRoom(conversation._id, 'group_created', {
+        emitToRoom(conversation._id, EVENTS.GROUP_CREATED, {
           _id: conversation._id,
           name: conversation.name,
           participants: conversation.participants,

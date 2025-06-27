@@ -1,5 +1,6 @@
 import MessageService from '../services/message.service.js';
-import { emitToRoom } from '../lib/socket.js';
+import { emitToRoom } from '../lib/socket/index.js';
+import { EVENTS } from '../lib/socket/events.enum.js';
 
 class MessageController {
   constructor() {
@@ -8,7 +9,6 @@ class MessageController {
 
   createMessage = async (req, res) => {
     try {
-      console.log('Creating message with data:', req.body);
       const { conversationId, senderId, content, parentMessage, heroContext, attachmentId } = req.body;
       const message = await this.messageService.createMessage({
         conversationId,
@@ -43,7 +43,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, 'message_status_updated', {
+      emitToRoom(message.conversationId, EVENTS.MESSAGE_STATUS_UPDATED, {
         messageId,
         status,
       });
@@ -68,7 +68,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, 'message_updated', message);
+      emitToRoom(message.conversationId, EVENTS.MESSAGE_UPDATED, message);
       
       return res.status(200).json(message);
     } catch (error) {
@@ -79,12 +79,10 @@ class MessageController {
   deleteMessage = async (req, res) => {
     try {
       const { messageId } = req.params;
-      console.log(req.user.id);
       const userId  = req.user.id;
-      console.log('User ID:', userId);
       const { deleteType } = req.body;
-      
-      if (!deleteType || !['everyone', 'justme'].includes(deleteType)) {
+      const invalidType = !deleteType || !['everyone', 'justme'].includes(deleteType);
+      if (invalidType) {
         return res.status(400).json({ message: 'Invalid delete type. Must be "everyone" or "justme"' });
       }
       
@@ -94,7 +92,7 @@ class MessageController {
         
         // Emit socket event for global delete
         if (message) {
-          emitToRoom(message.conversationId, 'message_deleted_global', {
+          emitToRoom(message.conversationId, EVENTS.MESSAGE_DELETED_GLOBAL, {
             message,
             conversationId: message.conversationId
           });
@@ -106,7 +104,7 @@ class MessageController {
         message = await this.messageService.deleteMessageForUser(messageId, userId);
         
         if (message) {
-          emitToRoom(message.conversationId, 'message_deleted_personal', {
+          emitToRoom(message.conversationId, EVENTS.MESSAGE_DELETED_PERSONAL, {
             messageId,
             userId,
             conversationId: message.conversationId
@@ -136,7 +134,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, 'message_reaction_added', {
+      emitToRoom(message.conversationId, EVENTS.REACTION_ADDED, {
         messageId,
         reaction: { userId, emoji },
       });
@@ -157,7 +155,7 @@ class MessageController {
       }
 
       // Emit socket event after successful reaction removal
-      emitToRoom(message.conversationId, 'message_reaction_removed', {
+      emitToRoom(message.conversationId, EVENTS.REACTION_REMOVED, {
         messageId,
         userId,
       });

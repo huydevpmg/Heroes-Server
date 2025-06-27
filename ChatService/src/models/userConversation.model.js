@@ -35,9 +35,19 @@ const UserConversationSchema = new mongoose.Schema(
       ref: "Label",
       default: [],
     }],
+    clearAt: {
+      type: Date,
+      default: null
+    }
   },
   { timestamps: true }
 );
+
+// INDEXES
+UserConversationSchema.index({ conversationId: 1, userId: 1 }, { unique: true });
+UserConversationSchema.index({ userId: 1, isPinned: -1, updatedAt: -1 });
+UserConversationSchema.index({ conversationId: 1 });
+UserConversationSchema.index({ userId: 1, isDeleted: 1, isArchived: 1 });
 
 const UserConversation = mongoose.model("UserConversation", UserConversationSchema);
 

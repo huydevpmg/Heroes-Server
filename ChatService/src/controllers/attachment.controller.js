@@ -1,5 +1,6 @@
 import AttachmentService from '../services/attachment.service.js';
-import { emitToRoom } from '../lib/socket.js';
+import { emitToRoom } from '../lib/socket/index.js';
+import { EVENTS } from '../common/enum/socket.enum.js';
 
 class AttachmentController {
   constructor() {
@@ -16,7 +17,7 @@ class AttachmentController {
       const attachment = await this.attachmentService.createAttachment({ file, conversationId, uploadedBy, fileName });
       
       // Emit socket event after successful attachment creation
-      emitToRoom(conversationId, 'attachment_created', {
+      emitToRoom(conversationId, EVENTS.ATTACHMENT_CREATED, {
         attachment,
         conversationId
       });
@@ -60,7 +61,7 @@ class AttachmentController {
 
       // Emit socket event after successful deletion
       if (attachment.conversationId) {
-        emitToRoom(attachment.conversationId, 'attachment_deleted', {
+        emitToRoom(attachment.conversationId, EVENTS.ATTACHMENT_DELETED, {
           attachmentId: id,
         });
       }
