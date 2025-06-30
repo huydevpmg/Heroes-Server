@@ -1,24 +1,21 @@
-import Message from '../models/message.model.js';
-import Conversation from '../models/conversation.model.js';
-import UserConversation from '../models/userConversation.model.js';
-import { emitToRoom } from '../lib/socket.js';
-import axios from 'axios';
-import Attachment from '../models/attachment.model.js';
-import FormData from 'form-data';
-import fs from 'fs';
-import AttachmentService from './attachment.service.js';
+import Message from "../models/message.model.js";
+import Conversation from "../models/conversation.model.js";
+import UserConversation from "../models/userConversation.model.js";
+import axios from "axios";
+import Attachment from "../models/attachment.model.js";
+import FormData from "form-data";
+import fs from "fs";
+import AttachmentService from "./attachment.service.js";
 
 class MessageService {
   constructor() {
-    this.authServiceUrl = 'http://localhost:4000/api';
-    this.heroServiceUrl = 'http://localhost:5000/api';
+    this.authServiceUrl = "http://localhost:4000/api";
+    this.heroServiceUrl = "http://localhost:5000/api";
     this.attachmentService = new AttachmentService();
-
   }
 
   async createMessage(messageData) {
     try {
-      console.log('Creating message:', messageData);
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
@@ -26,13 +23,10 @@ class MessageService {
         parentMessage: messageData.parentMessage || undefined,
         heroContext: messageData.heroContext || undefined,
         attachmentId: messageData.attachmentId || undefined,
-        status: 'SENT'
+        status: "SENT",
       });
 
-      console.log('Message before saving:', message);
-
       const savedMessage = await message.save();
-      console.log('Saved message about to return:', savedMessage);
 
       // Update conversation's last message
       await Conversation.findByIdAndUpdate(
@@ -44,34 +38,39 @@ class MessageService {
       await UserConversation.updateMany(
         {
           conversationId: messageData.conversationId,
-          userId: { $ne: messageData.senderId }
+          userId: { $ne: messageData.senderId },
         },
         {
-          $set: { lastReadMessage: savedMessage._id }
+          $set: { lastReadMessage: savedMessage._id },
         }
       );
 
       return savedMessage;
     } catch (error) {
-      throw new Error('Error creating message: ' + error.message);
+      throw new Error("Error creating message: " + error.message);
     }
   }
 
   async getMessages(conversationId, currentUserId) {
     let messages = await Message.find({
       conversationId,
-      isDeleteGlobal: false,
-      deletedForUserIds: { $ne: currentUserId },
     })
       .sort({ createdAt: 1 })
       .lean();
 
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
-    const parentMessageIds = messages.filter((m) => m.parentMessage)
+    const parentMessageIds = messages
+      .filter((m) => m.parentMessage)
       .map((m) => m.parentMessage?.toString());
-    const heroIds = messages.flatMap((m) => m.heroContext || []).map((id) => id.toString());
+    const heroIds = messages
+      .flatMap((m) => m.heroContext || [])
+      .map((id) => id.toString());
     const reactionUserIds = [
-      ...new Set(messages.flatMap((m) => (m.reactions || []).map((r) => r.userId?.toString()))),
+      ...new Set(
+        messages.flatMap((m) =>
+          (m.reactions || []).map((r) => r.userId?.toString())
+        )
+      ),
     ];
 
     const allUserIds = [...new Set([...senderIds, ...reactionUserIds])];
@@ -79,38 +78,44 @@ class MessageService {
 
     if (allUserIds.length) {
       await Promise.all(
-      allUserIds.map(async (userId) => {
-        try {
-        const { data } = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
-        if (data && data.user) {
-          users[userId] = data.user;
-        }
-        } catch (err) {
-        users[userId] = null;
-        }
-      })
+        allUserIds.map(async (userId) => {
+          try {
+            const { data } = await axios.get(
+              `${this.authServiceUrl}/profile/${userId}`
+            );
+            if (data && data.user) {
+              users[userId] = data.user;
+            }
+          } catch (err) {
+            users[userId] = null;
+          }
+        })
       );
     }
 
     let parentMessages = {};
     if (parentMessageIds.length) {
-      const parents = await Message.find({ _id: { $in: parentMessageIds } }).lean();
+      const parents = await Message.find({
+        _id: { $in: parentMessageIds },
+      }).lean();
       parents.forEach((pm) => (parentMessages[pm._id] = pm));
     }
 
     let heroes = {};
     if (heroIds.length) {
       await Promise.all(
-      heroIds.map(async (heroId) => {
-        try {
-        const { data } = await axios.get(`${this.heroServiceUrl}/heroes/${heroId}`);
-        if (data && data.hero) {
-          heroes[heroId] = data.hero;
-        }
-        } catch (err) {
-        heroes[heroId] = null;
-        }
-      })
+        heroIds.map(async (heroId) => {
+          try {
+            const { data } = await axios.get(
+              `${this.heroServiceUrl}/heroes/${heroId}`
+            );
+            if (data && data.hero) {
+              heroes[heroId] = data.hero;
+            }
+          } catch (err) {
+            heroes[heroId] = null;
+          }
+        })
       );
     }
 
@@ -120,7 +125,9 @@ class MessageService {
       parentMessage: msg.parentMessage
         ? parentMessages[msg.parentMessage?.toString()] || null
         : null,
-      heroContext: (msg.heroContext || []).map((id) => heroes[id.toString()] || null).filter(Boolean),
+      heroContext: (msg.heroContext || [])
+        .map((id) => heroes[id.toString()] || null)
+        .filter(Boolean),
       reactions: (msg.reactions || []).map((r) => ({
         ...r,
         user: users[r.userId?.toString()] || null,
@@ -131,20 +138,19 @@ class MessageService {
   }
 
   async updateMessageStatus(messageId, status) {
-    const message = await Message.findByIdAndUpdate(messageId, { status }, { new: true });
-
-    if (message) {
-      emitToRoom(message.conversationId, 'message_status_updated', {
-        messageId,
-        status,
-      });
-    }
-
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { status },
+      { new: true }
+    );
     return message;
   }
 
   async deleteMessageGlobally(messageId) {
-    return Message.updateOne({ _id: messageId }, { $set: { isDeleteGlobal: true } });
+    return Message.updateOne(
+      { _id: messageId },
+      { $set: { isDeleteGlobal: true } }
+    );
   }
 
   async deleteMessagePersonally(messageId, userId) {
@@ -156,9 +162,13 @@ class MessageService {
 
   async addReaction(messageId, userId, emoji) {
     const message = await Message.findById(messageId);
-    if (!message) return null;
+    if (!message) {
+      return null;
+    }
 
-    const existingReaction = message.reactions.find((r) => r.userId.toString() === userId);
+    const existingReaction = message.reactions.find(
+      (r) => r.userId.toString() === userId
+    );
     if (existingReaction) {
       existingReaction.emoji = emoji;
     } else {
@@ -166,27 +176,77 @@ class MessageService {
     }
 
     await message.save();
-    emitToRoom(message.conversationId, 'message_reaction_added', {
-      messageId,
-      reaction: { userId, emoji },
-    });
-
     return message;
   }
 
   async removeReaction(messageId, userId) {
     const message = await Message.findById(messageId);
-    if (!message) return null;
+    if (!message) {
+      return null;
+    }
 
-    message.reactions = message.reactions.filter((r) => r.userId.toString() !== userId);
+    message.reactions = message.reactions.filter(
+      (r) => r.userId.toString() !== userId
+    );
     await message.save();
-
-    emitToRoom(message.conversationId, 'message_reaction_removed', {
-      messageId,
-      userId,
-    });
-
     return message;
+  }
+
+  async updateMessage(messageId, content) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        { content, updatedAt: new Date() },
+        { new: true }
+      );
+
+      if (!message) {
+        return null;
+      }
+      return message;
+    } catch (error) {
+      throw new Error("Error updating message: " + error.message);
+    }
+  }
+
+  async deleteMessageForEveryone(messageId) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        {
+          isDeleteGlobal: true,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      if (!message) {
+        return null;
+      }
+      return message;
+    } catch (error) {
+      throw new Error("Error deleting message globally: " + error.message);
+    }
+  }
+
+  async deleteMessageForUser(messageId, userId) {
+    try {
+      const message = await Message.findByIdAndUpdate(
+        messageId,
+        {
+          $addToSet: { deletedForUserIds: userId },
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      if (!message) {
+        return null;
+      }
+      return message;
+    } catch (error) {
+      throw new Error("Error deleting message for user: " + error.message);
+    }
   }
 }
 

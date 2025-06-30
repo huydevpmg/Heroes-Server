@@ -14,14 +14,14 @@ router.post('/', messageController.createMessage);
 // GET all messages for a conversation
 router.get('/', messageController.getMessages);
 
-// GET a specific message by ID
+// PUT update message status
 router.put('/:messageId/status', messageController.updateMessageStatus);
 
-//PATCH update a message by ID
-// router.patch('/:messageId', messageController.updateMessage);
+// PUT update message content
+router.put('/:messageId', messageController.updateMessage);
 
-// DELETE a message by ID
-router.delete('/:messageId', messageController.deleteMessage);
+// PATCH (soft-delete)
+router.patch('/:messageId/delete', messageController.deleteMessage);
 
 // POST add a reaction to a message
 router.post('/:messageId/reactions', messageController.addReaction);

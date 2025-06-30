@@ -4,6 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "lint": "eslint . --ext .js,.ts",
     "start": "nodemon src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,7 +25,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "eslint": "^9.27.0",
+    "eslint": "^9.29.0",
     "nodemon": "^3.1.10"
   }
 }

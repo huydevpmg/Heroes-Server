@@ -1,4 +1,6 @@
 import ConversationService from '../services/conversation.service.js';
+import { emitToRoom } from '../lib/socket/index.js';
+import { EVENTS } from '../lib/socket/events.enum.js';
 
 class ConversationController {
   constructor() {
@@ -16,6 +18,19 @@ class ConversationController {
         createdBy,
         attachments: [],
       });
+
+      // Emit socket event for group creation
+      if (isGroup) {
+        emitToRoom(conversation._id, EVENTS.GROUP_CREATED, {
+          _id: conversation._id,
+          name: conversation.name,
+          participants: conversation.participants,
+          isGroup: conversation.isGroup,
+          createdBy: conversation.createdBy,
+          createdAt: conversation.createdAt
+        });
+      }
+
       return res.status(201).json(conversation);
     } catch (error) {
       return res.status(500).json({ message: error.message });
