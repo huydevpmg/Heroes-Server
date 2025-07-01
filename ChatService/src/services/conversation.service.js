@@ -191,7 +191,8 @@ class ConversationService {
       systemType: 'USER_LEAVE',
       meta: {
         userId,
-        username: user?.fullName || user?.username || 'User',
+        fullName: user?.fullName || user?.username || 'User',
+        username: user?.username || 'user',
       },
     });
 
