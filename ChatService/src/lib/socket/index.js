@@ -23,7 +23,7 @@ export const initSocket = (server) => {
   });
 
   io.use(socketAuth);
-  io.setMaxListeners(30);
+  io.setMaxListeners(60);
 
   const services = {
     conversationService: new ConversationService(),

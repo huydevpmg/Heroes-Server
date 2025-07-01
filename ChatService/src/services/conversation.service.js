@@ -176,6 +176,27 @@ class ConversationService {
       throw new Error("Error fetching users");
     }
   }
+
+  async leaveGroup(conversationId, userId) {
+    await Conversation.findByIdAndUpdate(
+      conversationId,
+      { $pull: { participants: userId } }
+    );
+    await UserConversation.deleteOne({ conversationId, userId });
+
+    const user = await this.getUserData(userId);
+    await Message.create({
+      conversationId,
+      type: 'SYSTEM',
+      systemType: 'USER_LEAVE',
+      meta: {
+        userId,
+        username: user?.fullName || user?.username || 'User',
+      },
+    });
+
+    return true;
+  }
 }
 
 export default ConversationService;

@@ -23,6 +23,9 @@ router.patch('/:id', protectRoute, conversationController.updateConversation);
 // PATCH lastAttachmentName
 router.patch('/:id/last-attachment', protectRoute, conversationController.updateLastAttachmentName);
 
+// PATCH leave group
+router.patch('/leave/:id', protectRoute, conversationController.leaveGroup);
+
 router.get('/users', protectRoute, conversationController.getAllUsers);
 
 //DELETE conversation

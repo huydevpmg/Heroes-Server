@@ -18,6 +18,9 @@ class MessageController {
         heroContext,
         attachmentId,
       });
+
+      emitToRoom(conversationId, EVENTS.RECEIVE_MESSAGE, message);
+
       return res.status(201).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -134,7 +137,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, EVENTS.REACTION_ADDED, {
+      emitToRoom(message.conversationId, EVENTS.MESSAGE_REACTION, {
         messageId,
         reaction: { userId, emoji },
       });
@@ -154,8 +157,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      // Emit socket event after successful reaction removal
-      emitToRoom(message.conversationId, EVENTS.REACTION_REMOVED, {
+      emitToRoom(message.conversationId, EVENTS.REMOVE_REACTION, {
         messageId,
         userId,
       });

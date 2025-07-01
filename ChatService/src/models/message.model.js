@@ -8,7 +8,7 @@ const messageSchema = new mongoose.Schema(
         },
         senderId: {
             type: mongoose.Schema.Types.ObjectId,
-            required: true,
+            required: false,
         },
         conversationId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -52,6 +52,25 @@ const messageSchema = new mongoose.Schema(
                 type: mongoose.Schema.Types.ObjectId 
             }
         ],
+        type: {
+            type: String,
+            enum: ["USER", "SYSTEM"],
+            default: "USER"
+        },
+        systemType: {
+            type: String,
+            enum: [
+                "USER_LEAVE",
+                "USER_JOIN",
+                "USER_KICK",
+                "GROUP_RENAME",
+            ],
+            required: false
+        },
+        meta: {
+            type: Object,
+            required: false
+        }
     },
     {
         timestamps: { createdAt: "createAt", updatedAt: "updatedAt" },

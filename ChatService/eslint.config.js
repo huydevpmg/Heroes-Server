@@ -10,7 +10,7 @@ export default defineConfig([
     },
     rules: {
       curly: ['error', 'all'],
-      'no-console': 'on',
+      'no-console': 'off',
     },
   },
 ]);

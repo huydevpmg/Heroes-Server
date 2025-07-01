@@ -11,20 +11,36 @@ export const EVENTS = {
   USER_TYPING: 'user_typing',
 
   // Message events
-  NEW_MESSAGE: 'message',
+  SEND_MESSAGE: 'send_message',
+  RECEIVE_MESSAGE: 'receive_message',
+  EDIT_MESSAGE: 'edit_message',
+  DELETE_MESSAGE: 'delete_message',
   MESSAGE_UPDATED: 'message_updated',
   MESSAGE_DELETED_GLOBAL: 'message_deleted_global',
   MESSAGE_DELETED_PERSONAL: 'message_deleted_personal',
   MESSAGE_STATUS_UPDATED: 'message_status_updated',
 
   // Reaction events
-  REACTION_ADDED: 'message_reaction_added',
-  REACTION_REMOVED: 'message_reaction_removed',
+  MESSAGE_REACTION: 'message_reaction',
+  REMOVE_REACTION: 'remove_reaction',
 
   // Attachment events
   ATTACHMENT_CREATED: 'attachment_created',
   ATTACHMENT_DELETED: 'attachment_deleted',
 
   // Conversation events
+  JOIN_ROOM: 'join_room',
+  CONNECT_CONVERSATION: 'connect_conversation',
   GROUP_CREATED: 'group_created',
+  NEW_GROUP: 'new_group',
+  LEAVE_GROUP: 'user_left_group',
+  LEAVE_GROUP_NOTIFY: 'user_left_group_notify',
+  PIN_CONVERSATION: 'pin_conversation',
+  ARCHIVE_CONVERSATION: 'archive_conversation',
+  ADD_LABEL: 'add_label',
+  REMOVE_LABEL: 'remove_label',
+  CONVERSATION_UPDATED: 'conversation_updated',
+
+  // Message status
+  MARK_AS_READ: 'mark_as_read',
 };
