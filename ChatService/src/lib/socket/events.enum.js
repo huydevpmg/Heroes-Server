@@ -27,4 +27,9 @@ export const EVENTS = {
 
   // Conversation events
   GROUP_CREATED: 'group_created',
+
+  // Read receipt events
+  MESSAGE_READ: 'message_read',
+  READ_RECEIPT_UPDATED: 'read_receipt_updated',
+  BULK_MESSAGE_READ: 'bulk_message_read',
 };

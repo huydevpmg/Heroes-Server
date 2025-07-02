@@ -4,6 +4,7 @@ import { registerUserSocket } from "./user.socket.js";
 import { registerConversationSocket } from "./conversation.socket.js";
 import { registerMessageSocket } from "./message.socket.js";
 import { registerAttachmentSocket } from "./attachment.socket.js";
+import { registerReadReceiptSocket } from "./readReceipt.socket.js";
 import { socketAuth } from "../../middleware/socketAuth.js";
 import ConversationService from "../../services/conversation.service.js";
 import MessageService from "../../services/message.service.js";
@@ -23,7 +24,7 @@ export const initSocket = (server) => {
   });
 
   io.use(socketAuth);
-  io.setMaxListeners(30);
+  io.setMaxListeners(10000);
 
   const services = {
     conversationService: new ConversationService(),
@@ -36,6 +37,7 @@ export const initSocket = (server) => {
     registerConversationSocket(io, socket, services);
     registerMessageSocket(io, socket, services);
     registerAttachmentSocket(io, socket);
+    registerReadReceiptSocket(socket);
   });
 
   return io;

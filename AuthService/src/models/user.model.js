@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
     fullName: {
       type: String,
       required: true
+    },
+    avatar: {
+      type: String,
+      default: ''
     }
   },
   { timestamps: true }
