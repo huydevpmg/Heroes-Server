@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { generateAccessToken, generateRefreshToken, verifyToken } from "../middleware/auth.js";
 
+
 export const registerUser = async (req, res) => {
   try {
     const { username, password, email, fullName } = req.body;
@@ -20,6 +21,7 @@ export const registerUser = async (req, res) => {
 
     const savedUser = await newUser.save();
     res.status(201).json(savedUser);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -27,17 +29,13 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password} = req.body;
 
     const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Incorrect password" });
-    }
+    if (!isMatch) return res.status(401).json({ message: "Incorrect password" });
 
     const accessToken = generateAccessToken({
       username: user.username,
@@ -50,15 +48,16 @@ export const loginUser = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: false,        
       sameSite: "Strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
     });
 
     res.status(200).json({
       message: "Login successful",
       accessToken,
     });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -67,14 +66,10 @@ export const loginUser = async (req, res) => {
 export const refreshToken = (req, res) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) {
-      return res.status(401).json({ message: "No refresh token" });
-    }
+    if (!token) return res.status(401).json({ message: "No refresh token" });
 
     const decoded = verifyToken(token);
-    if (!decoded) {
-      return res.status(403).json({ message: "Invalid refresh token" });
-    }
+    if (!decoded) return res.status(403).json({ message: "Invalid refresh token" });
 
     const newAccessToken = generateAccessToken({
       username: decoded.username,
@@ -82,6 +77,7 @@ export const refreshToken = (req, res) => {
     });
 
     res.status(200).json({ accessToken: newAccessToken });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

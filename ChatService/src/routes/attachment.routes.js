@@ -5,7 +5,7 @@ const router = express.Router();
 
 const controller = new AttachmentController();
 
-router.post('/', controller.createAttachment);
+router.post('/', upload.single('file'), controller.createAttachment);
 router.get('/', controller.getAttachments);
 router.get('/type', controller.getAttachmentsByType);
 router.get('/:id', controller.getAttachmentById);

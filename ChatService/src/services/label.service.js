@@ -21,17 +21,13 @@ class LabelService {
       updateData,
       { new: true }
     );
-    if (!updated) {
-      throw new Error('Label not found or no permission');
-    }
+    if (!updated) throw new Error('Label not found or no permission');
     return updated;
   }
 
   async deleteLabel(labelId, userId) {
     const deleted = await Label.findOneAndDelete({ _id: labelId, userId });
-    if (!deleted) {
-      throw new Error('Label not found or no permission');
-    }
+    if (!deleted) throw new Error('Label not found or no permission');
 
     await UserConversation.updateMany(
       { userId, labels: labelId },
@@ -41,20 +37,18 @@ class LabelService {
   }
 
   async addLabelToConversation(userConversationId, userId, labelId) {
+    // Verify label belongs to user
     const label = await Label.findOne({ _id: labelId, userId });
-    if (!label) {
-      throw new Error('Label not found or no permission');
-    }
+    if (!label) throw new Error('Label not found or no permission');
     console.log('label found:', label);
+    // Add label if not already present
     const updated = await UserConversation.findOneAndUpdate(
       { _id: userConversationId, userId, labels: { $ne: labelId } },
       { $push: { labels: labelId } },
       { new: true }
     ).populate('labels');
 
-    if (!updated) {
-      throw new Error('User conversation not found or label already added');
-    }
+    if (!updated) throw new Error('User conversation not found or label already added');
     return updated;
   }
 
@@ -65,9 +59,7 @@ class LabelService {
       { new: true }
     ).populate('labels');
 
-    if (!updated) {
-      throw new Error('User conversation not found');
-    }
+    if (!updated) throw new Error('User conversation not found');
     return updated;
   }
 }

@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import connectDB from './db/mongo.js';
-import { initSocket } from './lib/socket/index.js';
+import { initSocket } from './lib/socket.js';
 import routes from './routes/index.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';

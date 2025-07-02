@@ -1,4 +1,5 @@
 import Attachment from '../models/attachment.model.js';
+import { emitToRoom } from '../lib/socket.js';
 import { uploadFileToGCS } from '../lib/gsc.js';
 import Conversation from '../models/conversation.model.js';
 
@@ -10,6 +11,7 @@ class AttachmentService {
     const destFileName = `${conversationId}/${file.originalname}`;
     const fileUrl = await uploadFileToGCS(file.path, destFileName);
 
+    // Use fileName if provided, otherwise use original filename
     const attachmentName = fileName || file.originalname;
 
     const attachment = new Attachment({
@@ -23,11 +25,13 @@ class AttachmentService {
     await attachment.save();
 
     if (conversationId) {
+      // Push attachment._id vào conversation.attachments
       await Conversation.findByIdAndUpdate(
         conversationId,
         { $push: { attachments: attachment._id } },
         { new: true }
       );
+      emitToRoom(conversationId, 'new_attachment', attachment);
     }
     return attachment;
   }
@@ -42,6 +46,14 @@ class AttachmentService {
 
   async deleteAttachment(id) {
     const attachment = await Attachment.findByIdAndDelete(id);
+    
+    if (attachment && attachment.conversationId) {
+      // Emit socket event for deleted attachment
+      emitToRoom(attachment.conversationId, 'attachment_deleted', {
+        attachmentId: id,
+      });
+    }
+
     return attachment;
   }
 

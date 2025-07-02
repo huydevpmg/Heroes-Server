@@ -2,6 +2,8 @@ import axios from "axios";
 import Conversation from "../models/conversation.model.js";
 import UserConversation from "../models/userConversation.model.js";
 import Message from "../models/message.model.js";
+import { emitToRoom } from "../lib/socket.js";
+
 class ConversationService {
   constructor() {
     this.authServiceUrl = "http://localhost:4000/api";
@@ -20,6 +22,10 @@ class ConversationService {
         })
     );
     await Promise.all(userConversationPromises);
+
+    conversationData.participants.forEach((userId) => {
+      emitToRoom(userId, "new_conversation", conversation);
+    });
 
     return conversation;
   }
@@ -98,7 +104,7 @@ class ConversationService {
       const { _id, fullName, username, email, avatar } = response.data;
       return { _id, fullName, username, email, avatar };
     } catch (error) {
-      console.error("Error fetching user data:", error.message);
+      console.error("❌ Error fetching user data:", error.message);
       return null;
     }
   }
@@ -110,7 +116,7 @@ class ConversationService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching hero data:", error.message);
+      console.error("❌ Error fetching hero data:", error.message);
       return null;
     }
   }
