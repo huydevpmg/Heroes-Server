@@ -1,6 +1,7 @@
 import MessageService from '../services/message.service.js';
 import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../lib/socket/events.enum.js';
+import { MessageDeleteType } from '../common/enum/message-delete-type.enum.js';
+import { EVENTS } from '../common/enum/socket.enum.js';
 
 class MessageController {
   constructor() {
@@ -18,6 +19,7 @@ class MessageController {
         heroContext,
         attachmentId,
       });
+      emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
       return res.status(201).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -43,7 +45,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, EVENTS.MESSAGE_STATUS_UPDATED, {
+      emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_STATUS_UPDATED, {
         messageId,
         status,
       });
@@ -68,7 +70,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, EVENTS.MESSAGE_UPDATED, message);
+      emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_UPDATED, message);
       
       return res.status(200).json(message);
     } catch (error) {
@@ -81,22 +83,24 @@ class MessageController {
       const { messageId } = req.params;
       const userId  = req.user.id;
       const { deleteType } = req.body;
-      const invalidType = !deleteType || !['everyone', 'justme'].includes(deleteType);
+      const validTypes = Object.values(MessageDeleteType);
+      const invalidType = !deleteType || !validTypes.includes(deleteType);
       if (invalidType) {
-        return res.status(400).json({ message: 'Invalid delete type. Must be "everyone" or "justme"' });
+        return res.status(400).json({ message: `Invalid delete type. Must be one of: ${validTypes.join(', ')}` });
       }
       
       let message;
-      if (deleteType === 'everyone') {
+      if (deleteType === MessageDeleteType.EVERYONE) {
         message = await this.messageService.deleteMessageForEveryone(messageId);
         
         // Emit socket event for global delete
         if (message) {
-          emitToRoom(message.conversationId, EVENTS.MESSAGE_DELETED_GLOBAL, {
-            message,
-            conversationId: message.conversationId
+          emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_DELETED_GLOBAL, {
+            messageId,
+            conversationId: message.conversationId.toString()
           });
         }
+        
       } else {
         if (!userId) {
           return res.status(400).json({ message: 'User ID is required for personal delete' });
@@ -104,10 +108,10 @@ class MessageController {
         message = await this.messageService.deleteMessageForUser(messageId, userId);
         
         if (message) {
-          emitToRoom(message.conversationId, EVENTS.MESSAGE_DELETED_PERSONAL, {
+          emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_DELETED_PERSONAL, {
             messageId,
             userId,
-            conversationId: message.conversationId
+            conversationId: message.conversationId.toString()
           });
         }
       }
@@ -134,7 +138,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId, EVENTS.REACTION_ADDED, {
+      emitToRoom(message.conversationId.toString(), EVENTS.REACTION_ADDED, {
         messageId,
         reaction: { userId, emoji },
       });
@@ -155,7 +159,7 @@ class MessageController {
       }
 
       // Emit socket event after successful reaction removal
-      emitToRoom(message.conversationId, EVENTS.REACTION_REMOVED, {
+      emitToRoom(message.conversationId.toString(), EVENTS.REACTION_REMOVED, {
         messageId,
         userId,
       });

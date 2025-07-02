@@ -1,6 +1,6 @@
 import ConversationService from '../services/conversation.service.js';
 import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../lib/socket/events.enum.js';
+import { EVENTS } from '../common/enum/socket.enum.js';
 
 class ConversationController {
   constructor() {

@@ -1,4 +1,5 @@
 import { EVENTS } from "../../common/enum/socket.enum.js";
+import { MessageDeleteType } from "../../common/enum/message-delete-type.enum.js";
 
 export const registerMessageSocket = (io, socket, services) => {
   const { messageService, userConversationService } = services;
@@ -42,11 +43,12 @@ export const registerMessageSocket = (io, socket, services) => {
 
   socket.on(EVENTS.DELETE_MESSAGE, async ({ messageId, deleteType }, callback) => {
     try {
-      if (!deleteType || !['everyone', 'justme'].includes(deleteType)) {
-        return callback && callback({ success: false, message: 'Invalid delete type' });
+      const validTypes = Object.values(MessageDeleteType);
+      if (!deleteType || !validTypes.includes(deleteType)) {
+        return callback && callback({ success: false, message: `Invalid delete type` });
       }
       let message;
-      if (deleteType === 'everyone') {
+      if (deleteType === MessageDeleteType.EVERYONE) {
         message = await messageService.deleteMessageForEveryone(messageId);
         if (message) {
           io.to(message.conversationId).emit(EVENTS.MESSAGE_DELETED_GLOBAL, {

@@ -4,10 +4,12 @@ export const registerConversationSocket = (io, socket, services) => {
   const { conversationService, userConversationService } = services;
 
   socket.on(EVENTS.JOIN_ROOM, (conversationId) => {
-    socket.join(conversationId);
-    socket.to(conversationId).emit(EVENTS.USER_JOINED_CONVERSATION, {
+    const roomId = conversationId.toString();
+    socket.join(roomId);
+    console.log(`User ${socket.userId} joined room ${roomId}`);
+    socket.to(roomId).emit(EVENTS.USER_JOINED_CONVERSATION, {
       userId: socket.userId,
-      conversationId,
+      conversationId: roomId,
     });
   });
 

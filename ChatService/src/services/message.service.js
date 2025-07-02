@@ -223,6 +223,12 @@ class MessageService {
       if (!message) {
         return null;
       }
+
+      const conversation = await Conversation.findById(message.conversationId);
+      if (conversation && conversation.lastMessage && 
+          conversation.lastMessage.toString() === messageId) {
+      }
+
       return message;
     } catch (error) {
       throw new Error("Error deleting message globally: " + error.message);
@@ -243,6 +249,31 @@ class MessageService {
       if (!message) {
         return null;
       }
+
+      await Conversation.findByIdAndUpdate(
+        message.conversationId,
+        { updatedAt: new Date() },
+        { new: true }
+      );
+
+      const conversation = await Conversation.findById(message.conversationId);
+      if (conversation && conversation.lastMessage && 
+          conversation.lastMessage.toString() === messageId) {
+        
+        const previousMessage = await Message.findOne({
+          conversationId: message.conversationId,
+          _id: { $ne: messageId },
+          isDeleteGlobal: { $ne: true }
+        }).sort({ createdAt: -1 });
+
+        console.log("Previous message:", previousMessage);
+        await Conversation.findByIdAndUpdate(
+          message.conversationId,
+          { lastMessage: previousMessage ? previousMessage._id : null },
+          { new: true }
+        );
+      }
+
       return message;
     } catch (error) {
       throw new Error("Error deleting message for user: " + error.message);

@@ -61,9 +61,19 @@ class ConversationService {
       conversation.participants.map((id) => this.getUserData(id))
     );
 
-    const lastMessage = conversation.lastMessage
-      ? await this.getMessageById(conversation.lastMessage)
-      : null;
+    let lastMessage = null;
+    if (conversation.lastMessage) {
+      const message = await this.getMessageById(conversation.lastMessage);
+      if (message && !message.deletedForUserIds?.includes(currentUserId)) {
+        lastMessage = message;
+      } else {
+        lastMessage = await Message.findOne({
+          conversationId: conversation._id,
+          deletedForUserIds: { $ne: currentUserId },
+          isDeleteGlobal: { $ne: true }
+        }).sort({ createdAt: -1 });
+      }
+    }
 
     let otherParticipant = null;
     if (!conversation.isGroup) {
@@ -76,9 +86,10 @@ class ConversationService {
       participants,
       lastMessage: lastMessage
         ? {
-            content: lastMessage.content,
+            content: lastMessage.isDeleteGlobal ? "Message was deleted" : lastMessage.content,
             createdAt: lastMessage.createdAt,
             senderId: lastMessage.senderId,
+            isDeleteGlobal: lastMessage.isDeleteGlobal || false,
           }
         : null,
       name: conversation.isGroup
