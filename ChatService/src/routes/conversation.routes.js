@@ -11,8 +11,17 @@ router.post('/1on1', protectRoute, conversationController.findOrCreate1on1Conver
 //POST group conversation
 router.post('/', protectRoute, conversationController.createConversation);
 
+// POST add members to group
+router.post('/:id/members', protectRoute, conversationController.addMemberToGroup);
+
+// DELETE remove member from group
+router.delete('/:id/members', protectRoute, conversationController.removeMemberFromGroup);
+
 //GET all conversations list
 router.get('/', protectRoute, conversationController.getConversations);
+
+//GET all users (must be before /:id route)
+router.get('/users', protectRoute, conversationController.getAllUsers);
 
 //GET conversation by ID
 router.get('/:id', protectRoute, conversationController.getConversationById);
