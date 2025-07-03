@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import MessageReadReceipt from "./messageReadReceipt.model.js";
 
 const messageSchema = new mongoose.Schema(
     {
@@ -76,5 +77,25 @@ const messageSchema = new mongoose.Schema(
         timestamps: { createdAt: "createAt", updatedAt: "updatedAt" },
     }
 );
+
+messageSchema.post('save', async function(doc) {
+    try {
+        const existingReceipt = await MessageReadReceipt.findOne({
+            messageId: doc._id,
+            userId: doc.senderId
+        });
+
+        if (!existingReceipt) {
+            await MessageReadReceipt.create({
+                messageId: doc._id,
+                userId: doc.senderId,
+                conversationId: doc.conversationId,
+                readAt: new Date()
+            });
+        }
+    } catch (error) {
+        console.error('Error creating auto read receipt for sender:', error);
+    }
+});
 
 export default mongoose.model("Message", messageSchema);

@@ -11,11 +11,14 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+
     const newUser = new User({
       username,
       password: hashedPassword,
       email,
       fullName,
+      avatar: avatarUrl
     });
 
     const savedUser = await newUser.save();

@@ -4,6 +4,7 @@ import messageRoutes from './message.routes.js';
 import userConversationRoutes from './userConversation.routes.js';
 import attachmentRoutes from './attachment.routes.js';
 import labelRoutes from './label.routes.js';
+import readReceiptRoutes from './readReceipt.routes.js';
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.use('/messages', messageRoutes);
 router.use('/user-conversations', userConversationRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/labels', labelRoutes);
+router.use('/', readReceiptRoutes);
 
 export default router;

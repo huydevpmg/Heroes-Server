@@ -32,6 +32,11 @@ export const EVENTS = {
   JOIN_ROOM: 'join_room',
   CONNECT_CONVERSATION: 'connect_conversation',
   GROUP_CREATED: 'group_created',
+
+  // Read receipt events
+  MESSAGE_READ: 'message_read',
+  READ_RECEIPT_UPDATED: 'read_receipt_updated',
+  BULK_MESSAGE_READ: 'bulk_message_read',
   NEW_GROUP: 'new_group',
   LEAVE_GROUP: 'user_left_group',
   LEAVE_GROUP_NOTIFY: 'user_left_group_notify',

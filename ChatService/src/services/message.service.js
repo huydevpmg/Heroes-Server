@@ -86,8 +86,8 @@ class MessageService {
             const { data } = await axios.get(
               `${this.authServiceUrl}/profile/${userId}`
             );
-            if (data && data.user) {
-              users[userId] = data.user;
+            if (data) {
+              users[userId] = data;
             }
           } catch (err) {
             users[userId] = null;
