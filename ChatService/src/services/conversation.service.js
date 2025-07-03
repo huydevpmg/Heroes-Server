@@ -339,8 +339,8 @@ class ConversationService {
       });
 
       // Get user data and create system message
-      const user = await this.getUserData(userId);
-      const currentUser = await this.getUserData(currentUserId);
+      const [user,currentUser] = await Promise.all[this.getUserData(userId),
+      this.getUserData(currentUserId)];
 
       const removedUserName = user?.fullName || user?.username || "User";
       const actionPerformerName = currentUser?.fullName || currentUser?.username || "Someone";
