@@ -29,7 +29,7 @@ class ConversationService {
       .populate("conversationId")
       .sort({ updatedAt: -1 });
 
-    return Promise.all(
+    const conversations = await Promise.all(
       userConversations.map(async (uc) => {
         const conversation = uc.conversationId;
         const enriched = await this.enrichConversationData(
@@ -49,11 +49,15 @@ class ConversationService {
           lastReadAt: uc.lastReadAt,
           participants: enriched.participants,
           isGroup: conversation.isGroup,
+          createdBy: conversation.createdBy.toString(),
           attachments: conversation.attachments || [],
           lastAttachmentName: conversation.lastAttachmentName || '',
         };
       })
     );
+
+    // Sort conversations by actual conversation updatedAt (not UserConversation updatedAt)
+    return conversations.sort((a, b) => new Date(b.updatedAt || '').getTime() - new Date(a.updatedAt || '').getTime());
   }
 
   async enrichConversationData(conversation, currentUserId) {
@@ -185,6 +189,201 @@ class ConversationService {
     } catch (error) {
       console.error("Error fetching users:", error);
       throw new Error("Error fetching users");
+    }
+  }
+
+  async addMemberToGroup(conversationId, memberIds, currentUserId) {
+    try {
+      // Check if conversation exists and is a group
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      if (!conversation.isGroup) {
+        throw new Error("Cannot add members to non-group conversation");
+      }
+
+      // Check if current user is the owner of the group
+      if (conversation.createdBy.toString() !== currentUserId.toString()) {
+        throw new Error("Only the group owner can add members to the group");
+      }
+
+      // Filter out members that are already in the group
+      const currentParticipants = conversation.participants.map(id => id.toString());
+      const newMembers = memberIds.filter(id => !currentParticipants.includes(id.toString()));
+
+      if (newMembers.length === 0) {
+        throw new Error("All specified users are already members of this group");
+      }
+
+      // Update conversation with new participants and timestamp
+      const updatedConversation = await Conversation.findByIdAndUpdate(
+        conversationId,
+        {
+          $addToSet: { participants: { $each: newMembers } },
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+
+      // Create UserConversation records for new members
+      const userConversationPromises = newMembers.map(userId =>
+        UserConversation.create({
+          conversationId: conversationId,
+          userId: userId,
+        })
+      );
+      await Promise.all(userConversationPromises);
+
+      // Get user data for new members and create system message
+      const newMemberUsers = await Promise.all(
+        newMembers.map(userId => this.getUserData(userId))
+      );
+
+      // Get data of the user who performed the action
+      const currentUser = await this.getUserData(currentUserId);
+
+      // Create content for multiple users added
+      const memberNames = newMemberUsers
+        .map(user => user?.fullName || user?.username || "User")
+        .join(", ");
+
+      const actionPerformerName = currentUser?.fullName || currentUser?.username || "Someone";
+
+      const systemMsg = await Message.create({
+        conversationId,
+        senderId: currentUserId,
+        type: "SYSTEM",
+        systemType: "USER_ADDED",
+        content: `${actionPerformerName} added ${memberNames} to the group`,
+        meta: {
+          actionPerformer: {
+            userId: currentUserId,
+            fullName: currentUser?.fullName || currentUser?.username || "Someone",
+            username: currentUser?.username || "user",
+          },
+          addedUsers: newMemberUsers.map(user => ({
+            userId: user?._id,
+            fullName: user?.fullName || user?.username || "User",
+            username: user?.username || "user",
+          })),
+          addedCount: newMembers.length
+        },
+      });
+
+      // Update last message and timestamp
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: systemMsg._id,
+        updatedAt: new Date()
+      });
+
+      return {
+        conversation: updatedConversation,
+        addedMembers: newMembers,
+        systemMessage: systemMsg
+      };
+    } catch (error) {
+      throw new Error("Error adding members to group: " + error.message);
+    }
+  }
+
+  async removeMemberFromGroup(conversationId, userId, currentUserId) {
+    try {
+      // Check if conversation exists and is a group
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+
+      if (!conversation.isGroup) {
+        throw new Error("Cannot remove members from non-group conversation");
+      }
+
+      // Check if user is actually in the group
+      const participantIds = conversation.participants.map(p => p.toString());
+      const userIdString = userId.toString();
+      const isParticipant = participantIds.includes(userIdString);
+
+      if (!isParticipant) {
+        throw new Error("User is not a member of this group");
+      }
+
+      // Check if user is removing themselves (self-removal) or if current user is the owner
+      const isSelRemoval = userId === currentUserId;
+      const isOwner = conversation.createdBy.toString() === currentUserId.toString();
+      
+      if (!isSelRemoval && !isOwner) {
+        throw new Error("Only the group owner can remove other members from the group");
+      }
+
+      // Prevent owner from removing themselves
+      if (isSelRemoval && isOwner) {
+        throw new Error("Group owner cannot remove themselves from the group");
+      }
+
+      // Remove user from conversation participants and update timestamp
+      const updatedConversation = await Conversation.findByIdAndUpdate(
+        conversationId,
+        {
+          $pull: { participants: userId },
+          updatedAt: new Date()
+        },
+        { new: true }
+      );
+
+      // Remove UserConversation record
+      await UserConversation.deleteOne({
+        conversationId: conversationId,
+        userId: userId,
+      });
+
+      // Get user data and create system message
+      const user = await this.getUserData(userId);
+      const currentUser = await this.getUserData(currentUserId);
+
+      const removedUserName = user?.fullName || user?.username || "User";
+      const actionPerformerName = currentUser?.fullName || currentUser?.username || "Someone";
+
+      // Check if user removed themselves or were removed by someone else
+      const content = isSelRemoval
+        ? `${removedUserName} left the group`
+        : `${actionPerformerName} removed ${removedUserName} from the group`;
+
+      const systemMsg = await Message.create({
+        conversationId,
+        senderId: currentUserId,
+        type: "SYSTEM",
+        systemType: "USER_LEAVE",
+        content: content,
+        meta: {
+          actionPerformer: {
+            userId: currentUserId,
+            fullName: currentUser?.fullName || currentUser?.username || "Someone",
+            username: currentUser?.username || "user",
+          },
+          removedUser: {
+            userId,
+            fullName: user?.fullName || user?.username || "User",
+            username: user?.username || "user",
+          },
+          isSelRemoval: isSelRemoval
+        },
+      });
+
+      // Update last message and timestamp
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: systemMsg._id,
+        updatedAt: new Date()
+      });
+
+      return {
+        conversation: updatedConversation,
+        removedUserId: userId,
+        systemMessage: systemMsg
+      };
+    } catch (error) {
+      throw new Error("Error removing member from group: " + error.message);
     }
   }
 }
