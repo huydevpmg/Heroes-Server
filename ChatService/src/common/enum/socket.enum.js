@@ -25,4 +25,6 @@ export const EVENTS = {
     MESSAGE_DELETED_PERSONAL: 'message_deleted_personal',
     ATTACHMENT_CREATED: 'attachment_created',
     ATTACHMENT_DELETED: 'attachment_deleted',
+    MEMBER_ADDED: 'member_added',
+    MEMBER_REMOVED: 'member_removed',
   };

@@ -28,10 +28,13 @@ class MessageService {
 
       const savedMessage = await message.save();
 
-      // Update conversation's last message
+      // Update conversation's last message and timestamp
       await Conversation.findByIdAndUpdate(
         messageData.conversationId,
-        { lastMessage: savedMessage._id },
+        {
+          lastMessage: savedMessage._id,
+          updatedAt: new Date()
+        },
         { new: true }
       );
 
