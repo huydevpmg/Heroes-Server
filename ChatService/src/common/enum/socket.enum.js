@@ -1,9 +1,9 @@
 export const EVENTS = {
-  // Connection
+  // Connection events
   CONNECTION: 'connection',
   DISCONNECT: 'disconnect',
 
-  // Room management
+  // Room management events
   JOIN_ROOM: 'join_room',
   CONNECT_CONVERSATION: 'connect_conversation',
 
@@ -20,14 +20,14 @@ export const EVENTS = {
   TYPING: 'typing',
   USER_TYPING: 'user_typing',
 
-  // Reactions
+  // Reaction events
   MESSAGE_REACTION: 'message_reaction',
   REMOVE_REACTION: 'remove_reaction',
 
-  // Status
+  // User status events
   USER_STATUS_CHANGE: 'user_status_change',
 
-  // Group/Conversation management
+  // Group/Conversation management events
   GROUP_CREATED: 'group_created',
   NEW_GROUP: 'new_group',
   PIN_CONVERSATION: 'pin_conversation',
@@ -35,41 +35,13 @@ export const EVENTS = {
   ADD_LABEL: 'add_label',
   REMOVE_LABEL: 'remove_label',
   USER_JOINED_CONVERSATION: 'user_joined_conversation',
+  MEMBER_ADDED: 'member_added',
+  MEMBER_REMOVED: 'member_removed',
 
-  // Message status
+  // Message status events
   MARK_AS_READ: 'mark_as_read',
 
-  // Attachments
+  // Attachment events
   ATTACHMENT_CREATED: 'attachment_created',
-  ATTACHMENT_DELETED: 'attachment_deleted',
+  ATTACHMENT_DELETED: 'attachment_deleted'
 };
-
-    CONNECTION: 'connection',
-    DISCONNECT: 'disconnect',
-    JOIN_ROOM: 'join_room',
-    SEND_MESSAGE: 'send_message',
-    TYPING: 'typing',
-    GROUP_CREATED: 'group_created',
-    RECEIVE_MESSAGE: 'receive_message',
-    USER_TYPING: 'user_typing',
-    NEW_GROUP: 'new_group',
-    USER_STATUS_CHANGE: 'user_status_change',
-    CONNECT_CONVERSATION: 'connect_conversation',
-    MESSAGE_REACTION: 'message_reaction',
-    REMOVE_REACTION: 'remove_reaction',
-    MARK_AS_READ: 'mark_as_read',
-    PIN_CONVERSATION: 'pin_conversation',
-    ARCHIVE_CONVERSATION: 'archive_conversation',
-    ADD_LABEL: 'add_label',
-    REMOVE_LABEL: 'remove_label',
-    USER_JOINED_CONVERSATION: 'user_joined_conversation',
-    EDIT_MESSAGE: 'edit_message',
-    DELETE_MESSAGE: 'delete_message',
-    MESSAGE_UPDATED: 'message_updated',
-    MESSAGE_DELETED_GLOBAL: 'message_deleted_global',
-    MESSAGE_DELETED_PERSONAL: 'message_deleted_personal',
-    ATTACHMENT_CREATED: 'attachment_created',
-    ATTACHMENT_DELETED: 'attachment_deleted',
-    MEMBER_ADDED: 'member_added',
-    MEMBER_REMOVED: 'member_removed',
-  };
