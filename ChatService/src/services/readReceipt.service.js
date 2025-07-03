@@ -104,7 +104,9 @@ class ReadReceiptService {
   async getConversationReadReceipts(conversationId, messageIds = []) {
     try {
       const query = { conversationId };
-      if (messageIds.length > 0) {query.messageId = { $in: messageIds }};
+      if (messageIds.length > 0) {
+        query.messageId = { $in: messageIds }
+      };
 
       const readReceipts = await MessageReadReceipt.find(query).sort({ readAt: -1 });
       const userIds = [...new Set(readReceipts.map(r => r.userId.toString()))];
@@ -113,7 +115,9 @@ class ReadReceiptService {
       const receiptsByMessage = {};
       readReceipts.forEach(receipt => {
         const msgId = receipt.messageId.toString();
-        if (!receiptsByMessage[msgId]) {receiptsByMessage[msgId] = []};
+        if (!receiptsByMessage[msgId]) {
+          receiptsByMessage[msgId] = []
+        };
         receiptsByMessage[msgId].push({
           messageId: receipt.messageId,
           userId: receipt.userId,
