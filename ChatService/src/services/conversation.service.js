@@ -50,7 +50,7 @@ class ConversationService {
           participants: enriched.participants,
           isGroup: conversation.isGroup,
           attachments: conversation.attachments || [],
-          lastAttachmentName: conversation.lastAttachmentName || '',
+          lastAttachmentName: conversation.lastAttachmentName || "",
         };
       })
     );
@@ -186,6 +186,32 @@ class ConversationService {
       console.error("Error fetching users:", error);
       throw new Error("Error fetching users");
     }
+  }
+
+  async leaveGroup(conversationId, userId) {
+    await Conversation.findByIdAndUpdate(conversationId, {
+      $pull: { participants: userId },
+    });
+    await UserConversation.deleteOne({ conversationId, userId });
+
+    const user = await this.getUserData(userId);
+    const systemMsg = await Message.create({
+      conversationId,
+      type: "SYSTEM",
+      systemType: "USER_LEAVE",
+      content: `${user?.fullName || user?.username || "User"} left the group`,
+      meta: {
+        userId,
+        fullName: user?.fullName || user?.username || "User",
+        username: user?.username || "user",
+      },
+    });
+
+    await Conversation.findByIdAndUpdate(conversationId, {
+      lastMessage: systemMsg._id,
+    });
+
+    return true;
   }
 }
 

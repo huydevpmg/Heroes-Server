@@ -109,6 +109,31 @@ class ConversationController {
       res.status(500).json({ error: err.message });
     }
   }
+
+  /**
+   * Leave group conversation
+   * PATCH /api/conversations/leave/:id
+   */
+  leaveGroup = async (req, res) => {
+    try {
+      const { id: userId, fullName } = req.user;
+      const { id: conversationId } = req.params;
+      await this.conversationService.leaveGroup(conversationId, userId);
+
+      emitToRoom(conversationId, EVENTS.RECEIVE_MESSAGE, {
+        conversationId,
+        type: 'SYSTEM',
+        systemType: 'USER_LEAVE',
+        meta: { userId, fullName: fullName },
+      });
+      emitToRoom(conversationId, EVENTS.LEAVE_GROUP_NOTIFY, { userId, conversationId });
+      emitToUser(userId, EVENTS.LEAVE_GROUP, { userId, conversationId });
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
 }
 
 export default ConversationController;

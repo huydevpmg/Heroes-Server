@@ -42,10 +42,12 @@ export const loginUser = async (req, res) => {
     const accessToken = generateAccessToken({
       username: user.username,
       id: user._id,
+      fullName: user.fullName,
     });
     const refreshToken = generateRefreshToken({
       username: user.username,
       id: user._id,
+      fullName: user.fullName,
     });
 
     res.cookie("refreshToken", refreshToken, {
