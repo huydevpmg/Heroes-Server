@@ -235,7 +235,7 @@ class MessageService {
     try {
       const message = await Message.findByIdAndUpdate(
         messageId,
-        { content, updatedAt: new Date() },
+        { content, updatedAt: new Date(), isEdit: true },
         { new: true }
       );
 

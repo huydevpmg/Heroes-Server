@@ -71,6 +71,10 @@ const messageSchema = new mongoose.Schema(
             ],
             required: false
         },
+        isEdit: {
+            type: Boolean,
+            default: false
+        },
         meta: {
             type: Object,
             required: false
