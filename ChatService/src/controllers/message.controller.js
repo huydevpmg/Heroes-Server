@@ -29,7 +29,8 @@ class MessageController {
   getMessages = async (req, res) => {
     try {
       const { conversationId } = req.query;
-      const messages = await this.messageService.getMessages(conversationId);
+      const currentUserId = req.user.id;
+      const messages = await this.messageService.getMessages(conversationId, currentUserId);
       return res.status(200).json(messages);
     } catch (error) {
       return res.status(500).json({ message: error.message });

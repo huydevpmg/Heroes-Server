@@ -25,7 +25,15 @@ class ConversationService {
   }
 
   async getConversations(userId) {
-    const userConversations = await UserConversation.find({ userId })
+    const userConversations = await UserConversation.find({
+      userId,
+      isDeleted: { $ne: true }, // Only get non-deleted conversations
+      $or: [
+        { clearAt: { $exists: false } }, // No clearAt set
+        { clearAt: null }, // clearAt is null
+        { $expr: { $gt: ["$updatedAt", "$clearAt"] } } // updatedAt > clearAt
+      ]
+    })
       .populate("conversationId")
       .sort({ updatedAt: -1 });
 
@@ -45,6 +53,7 @@ class ConversationService {
           updatedAt: conversation.updatedAt,
           isPinned: uc.isPinned,
           isArchived: uc.isArchived,
+          isDeleted: uc.isDeleted, // Add isDeleted field for FE filter
           labels: uc.labels,
           lastReadAt: uc.lastReadAt,
           participants: enriched.participants,
@@ -56,7 +65,6 @@ class ConversationService {
       })
     );
 
-    // Sort conversations by actual conversation updatedAt (not UserConversation updatedAt)
     return conversations.sort(
       (a, b) =>
         new Date(b.updatedAt || "").getTime() -
@@ -69,16 +77,30 @@ class ConversationService {
       conversation.participants.map((id) => this.getUserData(id))
     );
 
+    const userConversation = await UserConversation.findOne({
+      conversationId: conversation._id,
+      userId: currentUserId
+    });
+
+    const clearAt = userConversation?.clearAt;
+
     let lastMessage = null;
-    if (conversation.lastMessage) {
+    if (clearAt) {
+      lastMessage = await Message.findOne({
+        conversationId: conversation._id,
+        deletedForUserIds: { $ne: currentUserId },
+        isDeleteGlobal: { $ne: true },
+        createdAt: { $gt: clearAt }
+      }).sort({ createdAt: -1 });
+    } else if (conversation.lastMessage) {
       const message = await this.getMessageById(conversation.lastMessage);
-      if (message && !message.deletedForUserIds?.includes(currentUserId)) {
+      if (message && !message.deletedForUserIds?.includes(currentUserId) && !message.isDeleteGlobal) {
         lastMessage = message;
       } else {
         lastMessage = await Message.findOne({
           conversationId: conversation._id,
           deletedForUserIds: { $ne: currentUserId },
-          isDeleteGlobal: { $ne: true },
+          isDeleteGlobal: { $ne: true }
         }).sort({ createdAt: -1 });
       }
     }
@@ -432,6 +454,36 @@ class ConversationService {
     });
 
     return true;
+  }
+
+  async clearConversation(conversationId, userId) {
+    try {
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        throw new Error("Conversation not found");
+      }
+      const currentTime = new Date();
+      const userUpdateConversation = await UserConversation.findOneAndUpdate(
+        { conversationId, userId },
+        { isDeleted: true,
+          clearAt: currentTime,
+          updatedAt: currentTime
+        },
+        { new: true }
+      );
+
+      if (!userUpdateConversation) {
+        throw new Error("User is not a participant in this conversation");
+      }
+
+      return {
+        success: true,
+        clearAt: userUpdateConversation.clearAt,
+        message: "Conversation cleared successfully"
+      };
+    } catch (error) {
+      throw new Error("Error clearing conversation: " + error.message);
+    }
   }
 }
 

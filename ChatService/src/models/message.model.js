@@ -77,7 +77,7 @@ const messageSchema = new mongoose.Schema(
         }
     },
     {
-        timestamps: { createdAt: "createAt", updatedAt: "updatedAt" },
+        timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
     }
 );
 

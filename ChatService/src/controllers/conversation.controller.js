@@ -94,7 +94,7 @@ class ConversationController {
     try {
       const users = await this.conversationService.getAllUsers();
       return res.status(200).json(users);
-    } 
+    }
     catch (error) {
       console.error('Error fetching users:', error);
       return res.status(500).json({ message: 'Internal Server Error' });
@@ -117,52 +117,52 @@ class ConversationController {
       const { id: conversationId } = req.params;
       const { memberIds } = req.body;
       const currentUserId = req.user.id;
-  
+
       // Validate input
       if (!Array.isArray(memberIds) || memberIds.length === 0) {
         return res.status(400).json({
           message: 'Member IDs array is required and cannot be empty'
         });
       }
-  
+
       const result = await this.conversationService.addMemberToGroup(
         conversationId,
         memberIds,
         currentUserId
       );
-  
+
       const payload = {
         conversationId,
         addedMembers: result.addedMembers,
         conversation: result.conversation,
         systemMessage: result.systemMessage
       };
-  
+
       emitToRoom(conversationId, EVENTS.MEMBER_ADDED, payload);
-      
+
       result.addedMembers.forEach(memberId => {
         emitToUser(memberId, EVENTS.MEMBER_ADDED, payload);
       });
-  
+
       return res.status(200).json({
         message: 'Members added successfully',
         data: result
       });
-  
+
     } catch (error) {
       const message = error.message || 'Internal server error';
-  
+
       if (message.includes('not found')) {
         return res.status(404).json({ message });
       }
-  
+
       if (
         message.includes('Cannot add members') ||
         message.includes('already members')
       ) {
         return res.status(400).json({ message });
       }
-  
+
       return res.status(500).json({ message });
     }
   };
@@ -172,13 +172,13 @@ class ConversationController {
       const { id: conversationId } = req.params;
       const { userId } = req.body;
       const currentUserId = req.user.id;
-      
+
       if (!userId) {
         return res.status(400).json({ message: 'User ID is required' });
       }
 
       const result = await this.conversationService.removeMemberFromGroup(conversationId, userId, currentUserId);
-      
+
       // Emit socket event to notify all participants about member removal
       emitToRoom(conversationId, EVENTS.MEMBER_REMOVED, {
         conversationId,
@@ -223,6 +223,32 @@ class ConversationController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
+
+  /**
+   * Clear conversation for a user
+   * PATCH /api/conversations/:id/clear
+   */
+  clearConversation = async (req, res) => {
+    try {
+      const { id: conversationId } = req.params;
+      const userId = req.user.id;
+      
+      const result = await this.conversationService.clearConversation(conversationId, userId);
+
+      return res.status(200).json({
+        message: 'Conversation cleared successfully',
+        data: result
+      });
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message.includes('not a participant')) {
+        return res.status(403).json({ message: error.message });
+      }
       return res.status(500).json({ message: error.message });
     }
   };

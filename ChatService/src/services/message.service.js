@@ -25,41 +25,77 @@ class MessageService {
         attachmentId: messageData.attachmentId || undefined,
         status: "SENT",
       });
-
+  
       const savedMessage = await message.save();
-
-      // Update conversation's last message and timestamp
+  
       await Conversation.findByIdAndUpdate(
         messageData.conversationId,
         {
           lastMessage: savedMessage._id,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         { new: true }
       );
-
+  
       await UserConversation.updateMany(
+        { conversationId: messageData.conversationId },
         {
-          conversationId: messageData.conversationId,
-          userId: { $ne: messageData.senderId },
-        },
-        {
-          $set: { lastReadMessage: savedMessage._id },
+          $set: {
+            updatedAt: new Date(),
+            lastReadMessage: savedMessage._id,
+          },
         }
       );
-
-      return savedMessage;
+  
+      const conversation = await Conversation.findById(messageData.conversationId).lean();
+      if (conversation?.participants?.length) {
+        await UserConversation.updateMany(
+          {
+            conversationId: messageData.conversationId,
+            isDeleted: true,
+            userId: { $in: conversation.participants },
+          },
+          {
+            $set: { isDeleted: false, updatedAt: new Date() },
+          }
+        );
+      }
+  
+      const sender = await this.getUserProfile(messageData.senderId);
+  
+      return {
+        ...savedMessage.toObject(),
+        sender,
+      };
     } catch (error) {
       throw new Error("Error creating message: " + error.message);
     }
   }
 
   async getMessages(conversationId, currentUserId) {
-    let messages = await Message.find({
+    const userConversation = await UserConversation.findOne({
       conversationId,
-    })
+      userId: currentUserId
+    });
+    const clearAt = userConversation?.clearAt;
+
+    const query = {
+      conversationId,
+      deletedForUserIds: { $ne: currentUserId },
+      isDeleteGlobal: { $ne: true }
+    };
+
+    if (clearAt) {
+      query.createdAt = { $gt: clearAt };
+    }
+
+    let messages = await Message.find(query)
       .sort({ createdAt: 1 })
       .lean();
+
+      if (clearAt && messages.length === 0) {
+        console.log('No messages after clearAt', clearAt);
+      }
 
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const parentMessageIds = messages
@@ -280,6 +316,16 @@ class MessageService {
       return message;
     } catch (error) {
       throw new Error("Error deleting message for user: " + error.message);
+    }
+  }
+
+  async getUserProfile(userId) {
+    try {
+      const { data } = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
+      return data;
+    } catch (error) {
+      console.error(`Failed to get profile for user ${userId}:`, error.message);
+      return null;
     }
   }
 }
