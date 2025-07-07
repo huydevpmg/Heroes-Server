@@ -65,6 +65,9 @@ const messageSchema = new mongoose.Schema(
                 "USER_JOIN",
                 "USER_KICK",
                 "GROUP_RENAME",
+                "USER_ADDED",
+                "USER_LEAVE",
+                "USER_REMOVED"
             ],
             required: false
         },
@@ -80,6 +83,11 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.post('save', async function(doc) {
     try {
+        // skip system messages without sender
+        if (!doc.senderId) {
+            return;
+        }
+
         const existingReceipt = await MessageReadReceipt.findOne({
             messageId: doc._id,
             userId: doc.senderId

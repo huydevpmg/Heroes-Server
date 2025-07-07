@@ -1,5 +1,5 @@
 import ConversationService from '../services/conversation.service.js';
-import { emitToRoom } from '../lib/socket/index.js';
+import { emitToRoom, emitToUser } from '../lib/socket/index.js';
 import { EVENTS } from '../common/enum/socket.enum.js';
 
 class ConversationController {
@@ -21,13 +21,15 @@ class ConversationController {
 
       // Emit socket event for group creation
       if (isGroup) {
-        emitToRoom(conversation._id, EVENTS.GROUP_CREATED, {
-          _id: conversation._id,
-          name: conversation.name,
-          participants: conversation.participants,
-          isGroup: conversation.isGroup,
-          createdBy: conversation.createdBy,
-          createdAt: conversation.createdAt
+        conversation.participants.forEach((memberId) => {
+          emitToUser(memberId.toString(), EVENTS.GROUP_CREATED, {
+            _id: conversation._id.toString(),
+            name: conversation.name,
+            participants: conversation.participants.map(id => id.toString()),
+            isGroup: conversation.isGroup,
+            createdBy: conversation.createdBy.toString(),
+            createdAt: conversation.createdAt
+          });
         });
       }
 
@@ -115,33 +117,53 @@ class ConversationController {
       const { id: conversationId } = req.params;
       const { memberIds } = req.body;
       const currentUserId = req.user.id;
-      
-      if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-        return res.status(400).json({ message: 'Member IDs array is required and cannot be empty' });
+  
+      // Validate input
+      if (!Array.isArray(memberIds) || memberIds.length === 0) {
+        return res.status(400).json({
+          message: 'Member IDs array is required and cannot be empty'
+        });
       }
-
-      const result = await this.conversationService.addMemberToGroup(conversationId, memberIds, currentUserId);
-      
-      // Emit socket event to notify all participants about new members
-      emitToRoom(conversationId, EVENTS.MEMBER_ADDED, {
+  
+      const result = await this.conversationService.addMemberToGroup(
+        conversationId,
+        memberIds,
+        currentUserId
+      );
+  
+      const payload = {
         conversationId,
         addedMembers: result.addedMembers,
         conversation: result.conversation,
         systemMessage: result.systemMessage
+      };
+  
+      emitToRoom(conversationId, EVENTS.MEMBER_ADDED, payload);
+      
+      result.addedMembers.forEach(memberId => {
+        emitToUser(memberId, EVENTS.MEMBER_ADDED, payload);
       });
-
+  
       return res.status(200).json({
         message: 'Members added successfully',
         data: result
       });
+  
     } catch (error) {
-      if (error.message.includes('not found')) {
-        return res.status(404).json({ message: error.message });
+      const message = error.message || 'Internal server error';
+  
+      if (message.includes('not found')) {
+        return res.status(404).json({ message });
       }
-      if (error.message.includes('Cannot add members') || error.message.includes('already members')) {
-        return res.status(400).json({ message: error.message });
+  
+      if (
+        message.includes('Cannot add members') ||
+        message.includes('already members')
+      ) {
+        return res.status(400).json({ message });
       }
-      return res.status(500).json({ message: error.message });
+  
+      return res.status(500).json({ message });
     }
   };
 

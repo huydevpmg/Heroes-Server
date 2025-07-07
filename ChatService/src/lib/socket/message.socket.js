@@ -21,7 +21,6 @@ export const registerMessageSocket = (io, socket, services) => {
       
       // Populate sender data before emitting
       const senderData = await messageService.getUserData(socket.userId);
-      console.log('Sender data loaded:', senderData);
       
       // Convert message to plain object
       const messageObj = message.toObject ? message.toObject() : message;
@@ -29,9 +28,7 @@ export const registerMessageSocket = (io, socket, services) => {
         ...messageObj,
         sender: senderData
       };
-      
-      console.log('Message with sender:', messageWithSender);
-      
+            
       io.to(conversationId).emit(EVENTS.RECEIVE_MESSAGE, messageWithSender);
       callback && callback({ success: true, message: messageWithSender });
     } catch (error) {

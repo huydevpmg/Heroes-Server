@@ -6,7 +6,6 @@ export const registerConversationSocket = (io, socket, services) => {
   socket.on(EVENTS.JOIN_ROOM, (conversationId) => {
     const roomId = conversationId.toString();
     socket.join(roomId);
-    console.log(`User ${socket.userId} joined room ${roomId}`);
     socket.to(roomId).emit(EVENTS.USER_JOINED_CONVERSATION, {
       userId: socket.userId,
       conversationId: roomId,
@@ -25,12 +24,6 @@ export const registerConversationSocket = (io, socket, services) => {
     } catch (err) {
       callback && callback({ success: false, message: err.message });
     }
-  });
-
-  socket.on(EVENTS.GROUP_CREATED, (groupData) => {
-    groupData.participants.forEach((memberId) => {
-      io.to(memberId).emit(EVENTS.NEW_GROUP, groupData);
-    });
   });
 
   socket.on(EVENTS.PIN_CONVERSATION, async ({ conversationId }, callback) => {

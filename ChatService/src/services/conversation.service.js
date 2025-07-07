@@ -57,7 +57,11 @@ class ConversationService {
     );
 
     // Sort conversations by actual conversation updatedAt (not UserConversation updatedAt)
-    return conversations.sort((a, b) => new Date(b.updatedAt || '').getTime() - new Date(a.updatedAt || '').getTime());
+    return conversations.sort(
+      (a, b) =>
+        new Date(b.updatedAt || "").getTime() -
+        new Date(a.updatedAt || "").getTime()
+    );
   }
 
   async enrichConversationData(conversation, currentUserId) {
@@ -74,7 +78,7 @@ class ConversationService {
         lastMessage = await Message.findOne({
           conversationId: conversation._id,
           deletedForUserIds: { $ne: currentUserId },
-          isDeleteGlobal: { $ne: true }
+          isDeleteGlobal: { $ne: true },
         }).sort({ createdAt: -1 });
       }
     }
@@ -90,7 +94,9 @@ class ConversationService {
       participants,
       lastMessage: lastMessage
         ? {
-            content: lastMessage.isDeleteGlobal ? "Message was deleted" : lastMessage.content,
+            content: lastMessage.isDeleteGlobal
+              ? "Message was deleted"
+              : lastMessage.content,
             createdAt: lastMessage.createdAt,
             senderId: lastMessage.senderId,
             isDeleteGlobal: lastMessage.isDeleteGlobal || false,
@@ -210,11 +216,17 @@ class ConversationService {
       }
 
       // Filter out members that are already in the group
-      const currentParticipants = conversation.participants.map(id => id.toString());
-      const newMembers = memberIds.filter(id => !currentParticipants.includes(id.toString()));
+      const currentParticipants = conversation.participants.map((id) =>
+        id.toString()
+      );
+      const newMembers = memberIds.filter(
+        (id) => !currentParticipants.includes(id.toString())
+      );
 
       if (newMembers.length === 0) {
-        throw new Error("All specified users are already members of this group");
+        throw new Error(
+          "All specified users are already members of this group"
+        );
       }
 
       // Update conversation with new participants and timestamp
@@ -222,13 +234,13 @@ class ConversationService {
         conversationId,
         {
           $addToSet: { participants: { $each: newMembers } },
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         { new: true }
       );
 
       // Create UserConversation records for new members
-      const userConversationPromises = newMembers.map(userId =>
+      const userConversationPromises = newMembers.map((userId) =>
         UserConversation.create({
           conversationId: conversationId,
           userId: userId,
@@ -238,7 +250,7 @@ class ConversationService {
 
       // Get user data for new members and create system message
       const newMemberUsers = await Promise.all(
-        newMembers.map(userId => this.getUserData(userId))
+        newMembers.map((userId) => this.getUserData(userId))
       );
 
       // Get data of the user who performed the action
@@ -246,10 +258,11 @@ class ConversationService {
 
       // Create content for multiple users added
       const memberNames = newMemberUsers
-        .map(user => user?.fullName || user?.username || "User")
+        .map((user) => user?.fullName || user?.username || "User")
         .join(", ");
 
-      const actionPerformerName = currentUser?.fullName || currentUser?.username || "Someone";
+      const actionPerformerName =
+        currentUser?.fullName || currentUser?.username || "Someone";
 
       const systemMsg = await Message.create({
         conversationId,
@@ -260,28 +273,29 @@ class ConversationService {
         meta: {
           actionPerformer: {
             userId: currentUserId,
-            fullName: currentUser?.fullName || currentUser?.username || "Someone",
+            fullName:
+              currentUser?.fullName || currentUser?.username || "Someone",
             username: currentUser?.username || "user",
           },
-          addedUsers: newMemberUsers.map(user => ({
+          addedUsers: newMemberUsers.map((user) => ({
             userId: user?._id,
             fullName: user?.fullName || user?.username || "User",
             username: user?.username || "user",
           })),
-          addedCount: newMembers.length
+          addedCount: newMembers.length,
         },
       });
 
       // Update last message and timestamp
       await Conversation.findByIdAndUpdate(conversationId, {
         lastMessage: systemMsg._id,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       return {
         conversation: updatedConversation,
         addedMembers: newMembers,
-        systemMessage: systemMsg
+        systemMessage: systemMsg,
       };
     } catch (error) {
       throw new Error("Error adding members to group: " + error.message);
@@ -301,7 +315,7 @@ class ConversationService {
       }
 
       // Check if user is actually in the group
-      const participantIds = conversation.participants.map(p => p.toString());
+      const participantIds = conversation.participants.map((p) => p.toString());
       const userIdString = userId.toString();
       const isParticipant = participantIds.includes(userIdString);
 
@@ -311,10 +325,13 @@ class ConversationService {
 
       // Check if user is removing themselves (self-removal) or if current user is the owner
       const isSelRemoval = userId === currentUserId;
-      const isOwner = conversation.createdBy.toString() === currentUserId.toString();
-      
+      const isOwner =
+        conversation.createdBy.toString() === currentUserId.toString();
+
       if (!isSelRemoval && !isOwner) {
-        throw new Error("Only the group owner can remove other members from the group");
+        throw new Error(
+          "Only the group owner can remove other members from the group"
+        );
       }
 
       // Prevent owner from removing themselves
@@ -327,7 +344,7 @@ class ConversationService {
         conversationId,
         {
           $pull: { participants: userId },
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         { new: true }
       );
@@ -339,11 +356,14 @@ class ConversationService {
       });
 
       // Get user data and create system message
-      const [user,currentUser] = await Promise.all[this.getUserData(userId),
-      this.getUserData(currentUserId)];
+      const [user, currentUser] = await Promise.all([
+        this.getUserData(userId),
+        this.getUserData(currentUserId),
+      ]);
 
       const removedUserName = user?.fullName || user?.username || "User";
-      const actionPerformerName = currentUser?.fullName || currentUser?.username || "Someone";
+      const actionPerformerName =
+        currentUser?.fullName || currentUser?.username || "Someone";
 
       // Check if user removed themselves or were removed by someone else
       const content = isSelRemoval
@@ -354,12 +374,12 @@ class ConversationService {
         conversationId,
         senderId: currentUserId,
         type: "SYSTEM",
-        systemType: "USER_LEAVE",
-        content: content,
+        systemType: isSelRemoval ? "USER_LEAVE" : "USER_REMOVED",
+        content,
         meta: {
           actionPerformer: {
             userId: currentUserId,
-            fullName: currentUser?.fullName || currentUser?.username || "Someone",
+            fullName: currentUser?.fullName || currentUser?.username || "User",
             username: currentUser?.username || "user",
           },
           removedUser: {
@@ -367,20 +387,20 @@ class ConversationService {
             fullName: user?.fullName || user?.username || "User",
             username: user?.username || "user",
           },
-          isSelRemoval: isSelRemoval
+          isSelRemoval,
         },
       });
 
       // Update last message and timestamp
       await Conversation.findByIdAndUpdate(conversationId, {
         lastMessage: systemMsg._id,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       return {
         conversation: updatedConversation,
         removedUserId: userId,
-        systemMessage: systemMsg
+        systemMessage: systemMsg,
       };
     } catch (error) {
       throw new Error("Error removing member from group: " + error.message);
@@ -396,6 +416,7 @@ class ConversationService {
     const user = await this.getUserData(userId);
     const systemMsg = await Message.create({
       conversationId,
+      senderId: userId,
       type: "SYSTEM",
       systemType: "USER_LEAVE",
       content: `${user?.fullName || user?.username || "User"} left the group`,
