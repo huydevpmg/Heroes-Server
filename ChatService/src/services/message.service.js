@@ -54,6 +54,16 @@ class MessageService {
     }
   }
 
+  async getUserData(userId) {
+    try {
+      const { data } = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
+      return data;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  }
+
   async getMessages(conversationId, currentUserId) {
     let messages = await Message.find({
       conversationId,

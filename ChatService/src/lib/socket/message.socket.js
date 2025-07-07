@@ -18,8 +18,22 @@ export const registerMessageSocket = (io, socket, services) => {
         heroContext,
         attachmentId,
       });
-      io.to(conversationId).emit(EVENTS.RECEIVE_MESSAGE, message);
-      callback && callback({ success: true, message });
+      
+      // Populate sender data before emitting
+      const senderData = await messageService.getUserData(socket.userId);
+      console.log('Sender data loaded:', senderData);
+      
+      // Convert message to plain object
+      const messageObj = message.toObject ? message.toObject() : message;
+      const messageWithSender = {
+        ...messageObj,
+        sender: senderData
+      };
+      
+      console.log('Message with sender:', messageWithSender);
+      
+      io.to(conversationId).emit(EVENTS.RECEIVE_MESSAGE, messageWithSender);
+      callback && callback({ success: true, message: messageWithSender });
     } catch (error) {
       callback && callback({ success: false, message: 'Failed to create message', error: error.message });
     }

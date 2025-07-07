@@ -19,8 +19,15 @@ class MessageController {
         heroContext,
         attachmentId,
       });
-      emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
-      return res.status(201).json(message);
+      
+      const senderData = await this.messageService.getUserData(senderId);
+      const messageWithSender = {
+        ...message.toObject(),
+        sender: senderData
+      };
+      
+      emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, messageWithSender);
+      return res.status(201).json(messageWithSender);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
