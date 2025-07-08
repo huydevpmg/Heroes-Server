@@ -19,6 +19,7 @@ class MessageController {
         heroContext,
         attachmentId,
       });
+
       emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
       return res.status(201).json(message);
     } catch (error) {

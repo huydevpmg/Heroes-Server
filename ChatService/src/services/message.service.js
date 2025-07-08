@@ -16,6 +16,7 @@ class MessageService {
 
   async createMessage(messageData) {
     try {
+      // Create new message
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
@@ -28,6 +29,7 @@ class MessageService {
   
       const savedMessage = await message.save();
   
+      // Update last message + updatedAt for conversation
       await Conversation.findByIdAndUpdate(
         messageData.conversationId,
         {
@@ -37,6 +39,7 @@ class MessageService {
         { new: true }
       );
   
+      // Update UserConversation: set lastReadMessage + updatedAt
       await UserConversation.updateMany(
         { conversationId: messageData.conversationId },
         {
@@ -47,6 +50,7 @@ class MessageService {
         }
       );
   
+      // If some users had isDeleted = true -> reset lại để hiện lại convo
       const conversation = await Conversation.findById(messageData.conversationId).lean();
       if (conversation?.participants?.length) {
         await UserConversation.updateMany(
@@ -61,11 +65,41 @@ class MessageService {
         );
       }
   
+      // Get sender profile for this message
       const sender = await this.getUserProfile(messageData.senderId);
   
+      // Handle parent message if exists
+      let parentMessageWithSender = null;
+      if (messageData.parentMessage) {
+        // Get parent message info
+        const parent = await Message.findById(messageData.parentMessage).lean();
+  
+        if (parent) {
+          const parentSenderId = parent.senderId?.toString();
+          let parentSender = null;
+  
+          // Call API to get sender profile of parent
+          if (parentSenderId) {
+            try {
+              const { data } = await axios.get(`${this.authServiceUrl}/profile/${parentSenderId}`);
+              parentSender = data;
+            } catch (err) {
+              parentSender = null; // fallback in case of error
+            }
+          }
+  
+          parentMessageWithSender = {
+            ...parent,
+            sender: parentSender,
+          };
+        }
+      }
+  
+      // Return message with sender and parent info (if any)
       return {
         ...savedMessage.toObject(),
         sender,
+        parentMessage: parentMessageWithSender,
       };
     } catch (error) {
       throw new Error("Error creating message: " + error.message);
@@ -137,7 +171,42 @@ class MessageService {
       const parents = await Message.find({
         _id: { $in: parentMessageIds },
       }).lean();
-      parents.forEach((pm) => (parentMessages[pm._id] = pm));
+      
+      // Get sender IDs for parent messages
+      const parentSenderIds = parents.map(p => p.senderId?.toString()).filter(Boolean);
+      
+      // Fetch parent message senders
+      let parentSenders = {};
+      if (parentSenderIds.length) {
+        await Promise.all(
+          parentSenderIds.map(async (userId) => {
+            if (!users[userId]) { // Only fetch if not already fetched
+              try {
+                const { data } = await axios.get(
+                  `${this.authServiceUrl}/profile/${userId}`
+                );
+                if (data) {
+                  users[userId] = data;
+                  parentSenders[userId] = data;
+                }
+              } catch (err) {
+                users[userId] = null;
+                parentSenders[userId] = null;
+              }
+            } else {
+              parentSenders[userId] = users[userId];
+            }
+          })
+        );
+      }
+      
+      // Populate parent messages with sender info
+      parents.forEach((pm) => {
+        parentMessages[pm._id] = {
+          ...pm,
+          sender: users[pm.senderId?.toString()] || null
+        };
+      });
     }
 
     let heroes = {};
