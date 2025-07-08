@@ -116,7 +116,6 @@ class MessageService {
     const query = {
       conversationId,
       deletedForUserIds: { $ne: currentUserId },
-      isDeleteGlobal: { $ne: true }
     };
 
     if (clearAt) {
@@ -327,17 +326,15 @@ class MessageService {
         },
         { new: true }
       );
-
+  
       if (!message) {
-        return null;
+        return { message: null, affectedReplies: [] };
       }
-
-      const conversation = await Conversation.findById(message.conversationId);
-      if (conversation && conversation.lastMessage && 
-          conversation.lastMessage.toString() === messageId) {
-      }
-
-      return message;
+  
+      const replies = await Message.find({ parentMessage: messageId }).select('_id').lean();
+      const affectedReplies = replies.map(reply => reply._id.toString());
+  
+      return { message, affectedReplies };
     } catch (error) {
       throw new Error("Error deleting message globally: " + error.message);
     }
