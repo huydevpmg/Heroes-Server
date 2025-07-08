@@ -84,14 +84,7 @@ class UserConversationController {
       if (!result) {
         return res.status(404).json({ message: 'User conversation not found' });
       }
-
-      // Emit socket event after successful archive toggle
-      emitToRoom(result.conversationId, EVENTS.ARCHIVE_CONVERSATION, {
-        userConversationId,
-        isArchived: result.isArchived,
-        userId
-      });
-
+      
       return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ message: error.message });

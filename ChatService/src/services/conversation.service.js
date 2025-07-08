@@ -47,13 +47,14 @@ class ConversationService {
 
         return {
           _id: conversation._id,
+          userConversationId: uc._id, 
           name: enriched.name,
           avatar: enriched.avatar,
           lastMessage: enriched.lastMessage,
           updatedAt: conversation.updatedAt,
           isPinned: uc.isPinned,
           isArchived: uc.isArchived,
-          isDeleted: uc.isDeleted, // Add isDeleted field for FE filter
+          isDeleted: uc.isDeleted,
           labels: uc.labels,
           lastReadAt: uc.lastReadAt,
           participants: enriched.participants,
