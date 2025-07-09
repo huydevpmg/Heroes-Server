@@ -27,11 +27,11 @@ class ConversationService {
   async getConversations(userId) {
     const userConversations = await UserConversation.find({
       userId,
-      isDeleted: { $ne: true }, // Only get non-deleted conversations
+      isDeleted: { $ne: true }, 
       $or: [
-        { clearAt: { $exists: false } }, // No clearAt set
-        { clearAt: null }, // clearAt is null
-        { $expr: { $gt: ["$updatedAt", "$clearAt"] } } // updatedAt > clearAt
+        { clearAt: { $exists: false } }, 
+        { clearAt: null }, 
+        { $expr: { $gt: ["$updatedAt", "$clearAt"] } }
       ]
     })
       .populate("conversationId")
@@ -90,18 +90,15 @@ class ConversationService {
       lastMessage = await Message.findOne({
         conversationId: conversation._id,
         deletedForUserIds: { $ne: currentUserId },
-        isDeleteGlobal: { $ne: true },
-        createdAt: { $gt: clearAt }
       }).sort({ createdAt: -1 });
     } else if (conversation.lastMessage) {
       const message = await this.getMessageById(conversation.lastMessage);
-      if (message && !message.deletedForUserIds?.includes(currentUserId) && !message.isDeleteGlobal) {
+      if (message && !message.deletedForUserIds?.includes(currentUserId)) {
         lastMessage = message;
       } else {
         lastMessage = await Message.findOne({
           conversationId: conversation._id,
           deletedForUserIds: { $ne: currentUserId },
-          isDeleteGlobal: { $ne: true }
         }).sort({ createdAt: -1 });
       }
     }
@@ -123,6 +120,9 @@ class ConversationService {
             createdAt: lastMessage.createdAt,
             senderId: lastMessage.senderId,
             isDeleteGlobal: lastMessage.isDeleteGlobal || false,
+            senderName: lastMessage.senderId
+              ? (participants.find(p => p && p._id?.toString() === lastMessage.senderId?.toString())?.fullName || "Unknown")
+              : undefined,
           }
         : null,
       name: conversation.isGroup

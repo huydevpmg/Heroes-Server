@@ -85,6 +85,7 @@ class MessageController {
       const { messageId } = req.params;
       const userId = req.user.id;
       const { deleteType } = req.body;
+      console.log('Delete Type:', deleteType);
   
       const validTypes = Object.values(MessageDeleteType);
       if (!deleteType || !validTypes.includes(deleteType)) {
@@ -95,6 +96,7 @@ class MessageController {
       let affectedReplies = [];
   
       if (deleteType === MessageDeleteType.EVERYONE) {
+        console.log('Deleting message for everyone');
         const result = await this.messageService.deleteMessageForEveryone(messageId);
         message = result?.message;
         affectedReplies = result?.affectedReplies || [];
