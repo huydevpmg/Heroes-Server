@@ -24,18 +24,34 @@ class ConversationService {
     return conversation;
   }
 
-  async getConversations(userId) {
-    const userConversations = await UserConversation.find({
+  async getConversations(userId, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const userConversationsQuery = UserConversation.find({
       userId,
-      isDeleted: { $ne: true }, 
+      isDeleted: { $ne: true },
       $or: [
-        { clearAt: { $exists: false } }, 
-        { clearAt: null }, 
+        { clearAt: { $exists: false } },
+        { clearAt: null },
         { $expr: { $gt: ["$updatedAt", "$clearAt"] } }
       ]
     })
       .populate("conversationId")
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const [userConversations, total] = await Promise.all([
+      userConversationsQuery,
+      UserConversation.countDocuments({
+        userId,
+        isDeleted: { $ne: true },
+        $or: [
+          { clearAt: { $exists: false } },
+          { clearAt: null },
+          { $expr: { $gt: ["$updatedAt", "$clearAt"] } }
+        ]
+      })
+    ]);
 
     const conversations = await Promise.all(
       userConversations.map(async (uc) => {
@@ -44,10 +60,9 @@ class ConversationService {
           conversation,
           userId
         );
-
         return {
           _id: conversation._id,
-          userConversationId: uc._id, 
+          userConversationId: uc._id,
           name: enriched.name,
           avatar: enriched.avatar,
           lastMessage: enriched.lastMessage,
@@ -66,25 +81,30 @@ class ConversationService {
       })
     );
 
-    return conversations.sort(
-      (a, b) =>
-        new Date(b.updatedAt || "").getTime() -
-        new Date(a.updatedAt || "").getTime()
-    );
+    const totalPages = Math.ceil(total / limit);
+    return {
+      conversations: conversations.sort(
+        (a, b) =>
+          new Date(b.updatedAt || "").getTime() -
+          new Date(a.updatedAt || "").getTime()
+      ),
+      total,
+      page,
+      totalPages
+    };
   }
 
   async enrichConversationData(conversation, currentUserId) {
-    const participants = await Promise.all(
-      conversation.participants.map((id) => this.getUserData(id))
-    );
-
-    const userConversation = await UserConversation.findOne({
-      conversationId: conversation._id,
-      userId: currentUserId
-    });
-
+    const [participants, userConversation] = await Promise.all([
+      Promise.all(conversation.participants.map((id) => this.getUserData(id))),
+      UserConversation.findOne({
+        conversationId: conversation._id,
+        userId: currentUserId,
+      }),
+    ]);
+  
     const clearAt = userConversation?.clearAt;
-
+  
     let lastMessage = null;
     if (clearAt) {
       lastMessage = await Message.findOne({
@@ -102,33 +122,37 @@ class ConversationService {
         }).sort({ createdAt: -1 });
       }
     }
-
-    let otherParticipant = null;
-    if (!conversation.isGroup) {
-      otherParticipant = participants.find(
-        (p) => p && p._id !== currentUserId.toString()
-      );
-    }
-
+  
+    const isGroup = conversation.isGroup;
+    const otherParticipant = !isGroup
+      ? participants.find((p) => p && p._id.toString() !== currentUserId.toString())
+      : null;
+  
+    const enrichedLastMessage = lastMessage
+      ? {
+          content: lastMessage.isDeleteGlobal
+            ? "Message was deleted"
+            : lastMessage.content,
+          createdAt: lastMessage.createdAt,
+          senderId: lastMessage.senderId,
+          isDeleteGlobal: lastMessage.isDeleteGlobal || false,
+          senderName: lastMessage.senderId
+            ? (
+                participants.find(
+                  (p) => p && p._id?.toString() === lastMessage.senderId?.toString()
+                )?.fullName || "Unknown"
+              )
+            : undefined,
+        }
+      : null;
+  
     return {
       participants,
-      lastMessage: lastMessage
-        ? {
-            content: lastMessage.isDeleteGlobal
-              ? "Message was deleted"
-              : lastMessage.content,
-            createdAt: lastMessage.createdAt,
-            senderId: lastMessage.senderId,
-            isDeleteGlobal: lastMessage.isDeleteGlobal || false,
-            senderName: lastMessage.senderId
-              ? (participants.find(p => p && p._id?.toString() === lastMessage.senderId?.toString())?.fullName || "Unknown")
-              : undefined,
-          }
-        : null,
-      name: conversation.isGroup
+      lastMessage: enrichedLastMessage,
+      name: isGroup
         ? conversation.name || "Nhóm mới"
         : otherParticipant?.fullName || "Người dùng ẩn danh",
-      avatar: conversation.isGroup
+      avatar: isGroup
         ? conversation.groupAvatar || "default-group.png"
         : otherParticipant?.avatar || "default-avatar.png",
     };
