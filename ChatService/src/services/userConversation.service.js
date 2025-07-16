@@ -82,10 +82,7 @@ class UserConversationService {
       return null;
     }
 
-    const labels = userConversation.labels || [];
-    if (!labels.includes(label)) {
-      labels.push(label);
-    }
+    const labels = [label];
 
     return this.updateUserConversation(userConversationId, userId, { labels });
   }

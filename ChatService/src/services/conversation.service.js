@@ -36,6 +36,7 @@ class ConversationService {
       ]
     })
       .populate("conversationId")
+      .populate("labels")
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -77,6 +78,7 @@ class ConversationService {
           createdBy: conversation.createdBy.toString(),
           attachments: conversation.attachments || [],
           lastAttachmentName: conversation.lastAttachmentName || "",
+          labels: uc.labels || [],
         };
       })
     );
@@ -145,7 +147,6 @@ class ConversationService {
             : undefined,
         }
       : null;
-  
     return {
       participants,
       lastMessage: enrichedLastMessage,

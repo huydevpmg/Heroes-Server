@@ -1,6 +1,7 @@
 import LabelService from '../services/label.service.js';
 import { emitToRoom } from '../lib/socket/index.js';
 import { EVENTS } from '../common/enum/socket.enum.js';
+import axios from 'axios';
 
 class LabelController {
   constructor() {
@@ -34,7 +35,19 @@ class LabelController {
   getUserLabels = async (req, res) => {
     try {
       const userId = req.user.id;
-      const labels = await this.labelService.getUserLabels(userId);
+    
+      let labels = await this.labelService.getUserLabels(userId);
+      if (!labels || labels.length === 0) {
+        const DEFAULT_LABELS = [
+          { name: 'Work', color: '#FF1744' },
+          { name: 'Family', color: '#F500A3' },
+          { name: 'Friends', color: '#FFD600' },
+          { name: 'Partner', color: '#2979FF' }
+        ];
+        labels = await Promise.all(
+          DEFAULT_LABELS.map(label => this.labelService.createLabel(userId, label))
+        );
+      }
       return res.status(200).json(labels);
     } catch (error) {
       return res.status(500).json({ message: error.message });
