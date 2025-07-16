@@ -106,7 +106,8 @@ class MessageService {
     }
   }
 
-  async getMessages(conversationId, currentUserId) {
+  async getMessages(conversationId, currentUserId, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
     const userConversation = await UserConversation.findOne({
       conversationId,
       userId: currentUserId
@@ -122,13 +123,14 @@ class MessageService {
       query.createdAt = { $gt: clearAt };
     }
 
-    let messages = await Message.find(query)
-      .sort({ createdAt: 1 })
-      .lean();
-
-      if (clearAt && messages.length === 0) {
-        console.log('No messages after clearAt', clearAt);
-      }
+    const [messages, total] = await Promise.all([
+      Message.find(query)
+        .sort({ createdAt: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Message.countDocuments(query)
+    ]);
 
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const parentMessageIds = messages
@@ -241,7 +243,13 @@ class MessageService {
       })),
     }));
 
-    return result;
+    const totalPages = Math.ceil(total / limit);
+    return {
+      messages: result,
+      total,
+      page,
+      totalPages
+    };
   }
 
   async updateMessageStatus(messageId, status) {

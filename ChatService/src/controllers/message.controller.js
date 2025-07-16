@@ -31,8 +31,10 @@ class MessageController {
     try {
       const { conversationId } = req.query;
       const currentUserId = req.user.id;
-      const messages = await this.messageService.getMessages(conversationId, currentUserId);
-      return res.status(200).json(messages);
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const result = await this.messageService.getMessages(conversationId, currentUserId, page, limit);
+      return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }

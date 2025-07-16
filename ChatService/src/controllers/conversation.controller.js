@@ -41,9 +41,11 @@ class ConversationController {
 
   getConversations = async (req, res) => {
     try {
-      const userId  = req.user.id;
-      const conversations = await this.conversationService.getConversations(userId);
-      return res.status(200).json(conversations);
+      const userId = req.user.id;
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const result = await this.conversationService.getConversations(userId, page, limit);
+      return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
