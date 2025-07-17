@@ -12,6 +12,9 @@ router.post("/messages/:messageId/read", readReceiptController.markMessageAsRead
 // Mark multiple messages as read (bulk)
 router.post("/conversations/:conversationId/read", readReceiptController.markMultipleMessagesAsRead);
 
+// Mark all messages as read for current user in a conversation
+router.post("/conversations/:conversationId/read-all", readReceiptController.markAllMessagesAsRead);
+
 // Get read receipts for a single message
 router.get("/messages/:messageId/read-receipts", readReceiptController.getMessageReadReceipts);
 

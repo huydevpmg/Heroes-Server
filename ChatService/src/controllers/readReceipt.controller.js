@@ -149,6 +149,42 @@ class ReadReceiptController {
       return res.status(500).json({ message: error.message });
     }
   };
+
+  /**
+   * Mark all messages as read for current user in a conversation
+   * POST /api/conversations/:conversationId/read-all
+   */
+  markAllMessagesAsRead = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { conversationId } = req.params;
+      if (!userId || !conversationId) {
+        return res.status(400).json({ message: 'Missing userId or conversationId' });
+      }
+      // Lấy tất cả message chưa đọc của user trong conversation
+      const unreadMessageIds = await this.readReceiptService.getUnreadMessageIds(conversationId, userId);
+      if (!unreadMessageIds.length) {
+        return res.status(200).json({ message: 'No unread messages', data: [] });
+      }
+      const receipts = await this.readReceiptService.markMultipleMessagesAsRead(
+        unreadMessageIds,
+        userId,
+        conversationId
+      );
+      emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
+        userId,
+        receipts,
+        type: 'bulk',
+        conversationId,
+      });
+      return res.status(200).json({
+        message: 'All messages marked as read successfully',
+        data: receipts,
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  };
 }
 
 export default ReadReceiptController;

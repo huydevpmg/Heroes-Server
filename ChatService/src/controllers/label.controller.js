@@ -1,7 +1,4 @@
 import LabelService from '../services/label.service.js';
-import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../common/enum/socket.enum.js';
-import axios from 'axios';
 
 class LabelController {
   constructor() {
@@ -116,13 +113,6 @@ class LabelController {
         labelId
       );
 
-      // Emit socket event after successful label addition
-      emitToRoom(userConversation.conversationId, EVENTS.ADD_LABEL, {
-        userConversationId,
-        labelId,
-        userId
-      });
-      
       return res.status(200).json(userConversation);
     } catch (error) {
       if (error.message.includes('not found')) {
@@ -146,14 +136,6 @@ class LabelController {
         userId,
         labelId
       );
-
-      // Emit socket event after successful label removal
-      emitToRoom(userConversation.conversationId, EVENTS.REMOVE_LABEL, {
-        userConversationId,
-        labelId,
-        userId
-      });
-      
       return res.status(200).json(userConversation);
     } catch (error) {
       if (error.message.includes('not found')) {

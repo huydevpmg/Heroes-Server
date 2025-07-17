@@ -197,6 +197,18 @@ class ReadReceiptService {
       return null;
     }
   }
+
+  /**
+   * Get unread message IDs for a user in a conversation
+   */
+  async getUnreadMessageIds(conversationId, userId) {
+    const messages = await Message.find({ conversationId });
+    const receipts = await MessageReadReceipt.find({ conversationId, userId });
+    const readIds = new Set(receipts.map(r => r.messageId.toString()));
+    return messages
+      .filter(m => !readIds.has(m._id.toString()) && m.senderId.toString() !== userId)
+      .map(m => m._id.toString());
+  }
 }
 
 export default ReadReceiptService;
