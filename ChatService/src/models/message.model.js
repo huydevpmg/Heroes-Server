@@ -34,16 +34,16 @@ const messageSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Attachment',
         },
-        reactions: [
-            {
-                userId: { 
-                    type: mongoose.Schema.Types.ObjectId 
-                },
-                emoji: { 
-                    type: String 
-                },
-            }
-        ],
+        // reactions: [
+        //     {
+        //         userId: { 
+        //             type: mongoose.Schema.Types.ObjectId 
+        //         },
+        //         emoji: { 
+        //             type: String 
+        //         },
+        //     }
+        // ],
         isDeleteGlobal: { 
             type: Boolean, 
             default: false 

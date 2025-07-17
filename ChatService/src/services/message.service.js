@@ -6,6 +6,7 @@ import Attachment from "../models/attachment.model.js";
 import FormData from "form-data";
 import fs from "fs";
 import AttachmentService from "./attachment.service.js";
+import MessageReaction from "../models/reaction.model.js";
 
 class MessageService {
   constructor() {
@@ -131,21 +132,26 @@ class MessageService {
       Message.countDocuments(query)
     ]);
 
-    const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
-    const parentMessageIds = messages
-      .filter((m) => m.parentMessage)
-      .map((m) => m.parentMessage?.toString());
-    const heroIds = messages
-      .flatMap((m) => m.heroContext || [])
-      .map((id) => id.toString());
+    // Lấy reactions cho tất cả message
+    const messageIds = messages.map(m => m._id);
+    const reactionsArr = await MessageReaction.find({ messageId: { $in: messageIds } }).lean();
+
+    // Gom reactions theo messageId
+    const reactionsMap = {};
+    for (const r of reactionsArr) {
+      if (!reactionsMap[r.messageId]) {reactionsMap[r.messageId] = [];}
+      reactionsMap[r.messageId].push(r);
+    }
+
+    // Lấy userIds từ reactions
     const reactionUserIds = [
       ...new Set(
-        messages.flatMap((m) =>
-          (m.reactions || []).map((r) => r.userId?.toString())
-        )
+        reactionsArr.flatMap(r => r.users.map(uid => uid.toString()))
       ),
     ];
 
+    // Lấy user profile cho tất cả sender và reaction users
+    const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const allUserIds = [...new Set([...senderIds, ...reactionUserIds])];
     let users = {};
 
@@ -165,6 +171,10 @@ class MessageService {
         })
       );
     }
+
+    const parentMessageIds = messages
+      .map(msg => msg.parentMessage)
+      .filter(id => !!id);
 
     let parentMessages = {};
     if (parentMessageIds.length) {
@@ -210,6 +220,11 @@ class MessageService {
     }
 
     let heroes = {};
+    const heroIds = [
+      ...new Set(
+        messages.flatMap(msg => (msg.heroContext || []).map(id => id.toString()))
+      ),
+    ];
     if (heroIds.length) {
       await Promise.all(
         heroIds.map(async (heroId) => {
@@ -236,9 +251,9 @@ class MessageService {
       heroContext: (msg.heroContext || [])
         .map((id) => heroes[id.toString()] || null)
         .filter(Boolean),
-      reactions: (msg.reactions || []).map((r) => ({
-        ...r,
-        user: users[r.userId?.toString()] || null,
+      reactions: (reactionsMap[msg._id] || []).map(r => ({
+        emoji: r.emoji,
+        users: r.users.map(uid => users[uid.toString()] || null)
       })),
     }));
 

@@ -2,9 +2,11 @@ import User from "../models/user.model.js";
 
 export const getProfileByUserId = async (req, res) => {
   try {
-   const { userId } = req.params; ;    
- 
-    const profile = await User.findOne({ _id: userId });
+    const { userId } = req.params;
+    const profile = await User.findOne(
+      { _id: userId },
+      "_id username email fullName avatar"
+    );
 
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });

@@ -5,6 +5,7 @@ import userConversationRoutes from './userConversation.routes.js';
 import attachmentRoutes from './attachment.routes.js';
 import labelRoutes from './label.routes.js';
 import readReceiptRoutes from './readReceipt.routes.js';
+import reactionRoutes from './reaction.route.js';
 
 const router = express.Router();
 
@@ -14,5 +15,5 @@ router.use('/user-conversations', userConversationRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/labels', labelRoutes);
 router.use('/', readReceiptRoutes);
-
+router.use('/reaction',reactionRoutes);
 export default router;
