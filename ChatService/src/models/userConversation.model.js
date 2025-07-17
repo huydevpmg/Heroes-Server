@@ -12,11 +12,13 @@ const UserConversationSchema = new mongoose.Schema(
       required: true 
     },
     lastReadAt: { 
-      type: Date 
+      type: Date,
+      default: null
     },
     lastReadMessage: { 
       type: mongoose.Schema.Types.ObjectId, 
-      ref: "Message" 
+      ref: "Message",
+      default: null 
     },
     isPinned: { 
       type: Boolean, 

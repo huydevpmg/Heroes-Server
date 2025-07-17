@@ -45,7 +45,6 @@ class LabelService {
     if (!label) {
       throw new Error('Label not found or no permission');
     }
-    console.log('label found:', label);
     const updated = await UserConversation.findOneAndUpdate(
       { _id: userConversationId, userId, labels: { $ne: labelId } },
       { $push: { labels: labelId } },

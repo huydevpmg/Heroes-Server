@@ -39,13 +39,12 @@ class MessageService {
         { new: true }
       );
   
-      // Update UserConversation: set lastReadMessage + updatedAt
+      // Update UserConversation: updatedAt
       await UserConversation.updateMany(
         { conversationId: messageData.conversationId },
         {
           $set: {
             updatedAt: new Date(),
-            lastReadMessage: savedMessage._id,
           },
         }
       );
@@ -379,7 +378,6 @@ class MessageService {
           isDeleteGlobal: { $ne: true }
         }).sort({ createdAt: -1 });
 
-        console.log("Previous message:", previousMessage);
         await Conversation.findByIdAndUpdate(
           message.conversationId,
           { lastMessage: previousMessage ? previousMessage._id : null },

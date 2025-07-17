@@ -61,6 +61,29 @@ class ConversationService {
           conversation,
           userId
         );
+
+        let unreadCount = 0;
+        if (uc.lastReadMessage) {
+          const lastReadMsg = await Message.findById(uc.lastReadMessage);
+          let lastReadTime = lastReadMsg ? lastReadMsg.createdAt : null;
+          if (lastReadTime) {
+            unreadCount = await Message.countDocuments({
+              conversationId: conversation._id,
+              createdAt: { $gt: lastReadTime },
+              deletedForUserIds: { $ne: userId },
+              senderId: { $ne: userId },
+            });
+          } else {
+            unreadCount = 0;
+          }
+        } else {
+          unreadCount = await Message.countDocuments({
+            conversationId: conversation._id,
+            deletedForUserIds: { $ne: userId },
+            senderId: { $ne: userId },
+          });
+        }
+
         return {
           _id: conversation._id,
           userConversationId: uc._id,
@@ -79,6 +102,7 @@ class ConversationService {
           attachments: conversation.attachments || [],
           lastAttachmentName: conversation.lastAttachmentName || "",
           labels: uc.labels || [],
+          unreadCount, // Thêm trường này để trả về số tin nhắn chưa đọc
         };
       })
     );

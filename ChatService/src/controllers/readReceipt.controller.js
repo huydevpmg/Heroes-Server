@@ -13,81 +13,67 @@ class ReadReceiptController {
    */
   markMessageAsRead = async (req, res) => {
     try {
+      const userId = req.user.id;
       const { messageId } = req.params;
-      const { userId, conversationId } = req.body;
+      const { conversationId } = req.body;
 
-      if (!userId) {
-        return res.status(400).json({ message: 'User ID is required' });
+      if (!userId || !conversationId) {
+        return res.status(400).json({ message: 'Missing userId or conversationId' });
       }
 
-      if (!conversationId) {
-        return res.status(400).json({ message: 'Conversation ID is required' });
-      }
-
-      const readReceipt = await this.readReceiptService.markMessageAsRead(
-        messageId, 
-        userId, 
+      const [receipt] = await this.readReceiptService.markMultipleMessagesAsRead(
+        [messageId],
+        userId,
         conversationId
       );
 
-      // Just emit if it's a new read receipt
-      if (readReceipt.isNewRead) {
-        emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
-          messageId,
-          userId,
-          readAt: readReceipt.readAt,
-          conversationId,
-          user: readReceipt.user
-        });
-      }
+      emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
+        messageId,
+        userId,
+        readAt: receipt.readAt,
+        conversationId,
+        user: receipt.user,
+        type: 'single',
+      });
 
       return res.status(200).json({
         message: 'Message marked as read successfully',
-        data: readReceipt
+        data: receipt,
       });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
   };
 
-  /**
-   * Mark multiple messages as read (bulk)
-   * POST /api/conversations/:conversationId/read
-   */
   markMultipleMessagesAsRead = async (req, res) => {
     try {
+      const userId = req.user.id;
       const { conversationId } = req.params;
-      const { userId, messageIds } = req.body;
+      const { messageIds } = req.body;
 
-      if (!userId) {
-        return res.status(400).json({ message: 'User ID is required' });
+      if (!userId || !Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ message: 'Invalid userId or messageIds' });
       }
 
-      if (!messageIds || !Array.isArray(messageIds)) {
-        return res.status(400).json({ message: 'Message IDs array is required' });
-      }
-
-      const result = await this.readReceiptService.markMultipleMessagesAsRead(
+      const receipts = await this.readReceiptService.markMultipleMessagesAsRead(
         messageIds,
         userId,
         conversationId
       );
 
-      // Emit socket event for bulk read
       emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
         userId,
         messageIds,
         readAt: new Date(),
         conversationId,
-        type: 'bulk'
+        user: receipts[0]?.user || null,
+        receipts,
+        type: 'bulk',
       });
 
       return res.status(200).json({
         message: 'Messages marked as read successfully',
-        data: {
-          modifiedCount: result.modifiedCount,
-          upsertedCount: result.upsertedCount
-        }
+        data: receipts,
       });
     } catch (error) {
       return res.status(500).json({ message: error.message });

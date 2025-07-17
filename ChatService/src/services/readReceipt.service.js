@@ -1,83 +1,55 @@
 import MessageReadReceipt from "../models/messageReadReceipt.model.js";
 import Message from "../models/message.model.js";
 import axios from "axios";
+import UserConversation from "../models/userConversation.model.js";
 
 class ReadReceiptService {
-  async markMessageAsRead(messageId, userId, conversationId) {
-    try {
-      const message = await Message.findById(messageId);
-      if (!message) {
-        throw new Error("Message not found");
-      }
-
-      let readReceipt = await MessageReadReceipt.findOne({ messageId, userId });
-      let isNewRead = false;
-
-      if (!readReceipt) {
-        readReceipt = await MessageReadReceipt.create({
-          messageId,
-          userId,
-          conversationId,
-          readAt: new Date(),
-        });
-        isNewRead = true;
-      }
-      const user = await this.getUserData(userId);
-
-      return {
-        messageId: readReceipt.messageId,
-        userId: readReceipt.userId,
-        readAt: readReceipt.readAt,
-        conversationId: readReceipt.conversationId,
-        user: user || null,
-        isNewRead: isNewRead,
-      };
-    } catch (error) {
-      throw new Error("Error marking message as read: " + error.message);
-    }
-  }
-
   async markMultipleMessagesAsRead(messageIds, userId, conversationId) {
     try {
-      // Get all messageIds and just select the messageId
-      const existingReceipts = await MessageReadReceipt.find({
-        messageId: { $in: messageIds },
-        userId,
-      }).select("messageId");
-
-      const existingMessageIds = new Set(
-        existingReceipts.map((r) => r.messageId.toString())
-      );
-
       const now = new Date();
-      const toCreate = messageIds.filter(
-        (id) => !existingMessageIds.has(id.toString())
-      );
-
-      if (toCreate.length > 0) {
-        await MessageReadReceipt.insertMany(
-          toCreate.map((messageId) => ({
-            messageId,
-            userId,
-            conversationId,
-            readAt: now,
-          }))
+  
+      const messages = await Message.find({ _id: { $in: messageIds } }).select("_id");
+      const validMessageIds = messages.map((m) => m._id.toString());
+  
+      const bulkOps = validMessageIds.map((messageId) => ({
+        updateOne: {
+          filter: { messageId, userId },
+          update: {
+            $setOnInsert: { messageId, userId, conversationId, readAt: now }
+          },
+          upsert: true
+        }
+      }));
+  
+      await MessageReadReceipt.bulkWrite(bulkOps, { ordered: false });
+  
+      if (validMessageIds.length) {
+        const lastMessageId = validMessageIds[validMessageIds.length - 1];
+        await UserConversation.updateOne(
+          { conversationId, userId },
+          { $set: { lastReadAt: now, lastReadMessage: lastMessageId } }
         );
       }
-
+  
       const user = await this.getUserData(userId);
-
-      return messageIds.map((messageId) => ({
+  
+      return validMessageIds.map((messageId) => ({
         messageId,
         userId,
         readAt: now,
         conversationId,
-        user: user || null,
+        user
       }));
     } catch (error) {
       throw new Error("Error marking messages as read: " + error.message);
     }
   }
+  
+  async markMessageAsRead(messageId, userId, conversationId) {
+    const [result] = await this.markMultipleMessagesAsRead([messageId], userId, conversationId);
+    return { ...result, isNewRead: true };
+  }
+  
 
   async getMessageReadReceipts(messageId, conversationId) {
     try {

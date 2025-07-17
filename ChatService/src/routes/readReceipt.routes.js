@@ -1,8 +1,10 @@
 import express from "express";
 import ReadReceiptController from "../controllers/readReceipt.controller.js";
+import { protectRoute } from "../middleware/socketAuth.js";
 
 const router = express.Router();
 const readReceiptController = new ReadReceiptController();
+router.use(protectRoute);
 
 // Mark single message as read
 router.post("/messages/:messageId/read", readReceiptController.markMessageAsRead);
