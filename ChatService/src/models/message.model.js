@@ -65,6 +65,7 @@ const messageSchema = new mongoose.Schema(
                 "USER_JOIN",
                 "USER_KICK",
                 "GROUP_RENAME",
+                "GROUP_CREATED",
                 "USER_ADDED",
                 "USER_LEAVE",
                 "USER_REMOVED"

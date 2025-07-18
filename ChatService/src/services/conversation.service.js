@@ -21,6 +21,25 @@ class ConversationService {
     );
     await Promise.all(userConversationPromises);
 
+    if (conversation.isGroup) {
+      const user = await this.getUserData(conversation.createdBy);
+      const systemMsg = await Message.create({
+        conversationId: conversation._id,
+        senderId: conversation.createdBy,
+        type: "SYSTEM",
+        systemType: "GROUP_CREATED",
+        content: `${user?.fullName || user?.username || "User"} created the group`,
+        meta: {
+          userId: conversation.createdBy,
+          fullName: user?.fullName || user?.username || "User",
+          username: user?.username || "user",
+        },
+      });
+      await Conversation.findByIdAndUpdate(conversation._id, {
+        lastMessage: systemMsg._id,
+      });
+    }
+
     return conversation;
   }
 
@@ -159,6 +178,7 @@ class ConversationService {
           content: lastMessage.isDeleteGlobal
             ? "Message was deleted"
             : lastMessage.content,
+          type: lastMessage.type,
           createdAt: lastMessage.createdAt,
           senderId: lastMessage.senderId,
           isDeleteGlobal: lastMessage.isDeleteGlobal || false,
