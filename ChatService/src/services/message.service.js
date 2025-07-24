@@ -255,10 +255,27 @@ class MessageService {
       if (!message) {
         return null;
       }
-      
-      await publish(REDIS_CHANNEL.MESSAGE_UPDATED, message);
-
-      return message;
+      const sender = await userProfileService.getUser(message.senderId);
+      let parentMessageWithSender = null;
+      if (message.parentMessage) {
+        const parent = await Message.findById(message.parentMessage).lean();
+        let parentSender = null;
+        if (parent && parent.senderId) {
+          try {
+            parentSender = await userProfileService.getUser(parent.senderId.toString());
+          } catch (err) {
+            parentSender = null;
+          }
+        }
+        parentMessageWithSender = parent ? { ...parent, sender: parentSender } : null;
+      }
+      const result = {
+        ...message.toObject(),
+        sender,
+        parentMessage: parentMessageWithSender,
+      };
+      await publish(REDIS_CHANNEL.MESSAGE_UPDATED, result);
+      return result;
     } catch (error) {
       throw new Error("Error updating message: " + error.message);
     }
