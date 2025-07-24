@@ -1,6 +1,4 @@
 import UserConversationService from '../services/userConversation.service.js';
-import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../common/enum/socket/socket.enum.js';
 
 class UserConversationController {
   constructor() {
