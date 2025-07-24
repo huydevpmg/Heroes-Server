@@ -89,6 +89,7 @@ class UserConversationService {
 
   // Remove label from conversation
   async removeLabel(userConversationId, userId, label) {
+    console.log(label);
     const userConversation = await UserConversation.findOne({
       _id: userConversationId,
       userId: userId,
@@ -98,8 +99,7 @@ class UserConversationService {
       return null;
     }
 
-    const labels = (userConversation.labels || []).filter((l) => l !== label);
-
+    const labels = (userConversation.labels || []).filter((l) => l.toString() !== label);
     return this.updateUserConversation(userConversationId, userId, { labels });
   }
 }
