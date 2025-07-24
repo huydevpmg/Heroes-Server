@@ -10,6 +10,7 @@ export function registerMessageListener() {
   });
 
   subscribe(REDIS_CHANNEL.MESSAGE_UPDATED, (message) => {
+    console.log('Message updated:', message);
     emitToRoom(
       message.conversationId.toString(),
       EVENTS.MESSAGE_UPDATED,
