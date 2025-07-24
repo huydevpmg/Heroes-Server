@@ -2,16 +2,16 @@ import Message from "../models/message.model.js";
 import Conversation from "../models/conversation.model.js";
 import UserConversation from "../models/userConversation.model.js";
 import axios from "axios";
-import Attachment from "../models/attachment.model.js";
-import FormData from "form-data";
-import fs from "fs";
 import AttachmentService from "./attachment.service.js";
 import MessageReaction from "../models/reaction.model.js";
+import { config } from "../config/index.js";
+import userProfileService from "./userProfile.service.js";
+import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
+import { publish } from "../lib/redis/redis.js";
 
 class MessageService {
   constructor() {
-    this.authServiceUrl = "http://localhost:4000/api";
-    this.heroServiceUrl = "http://localhost:5000/api";
+    this.heroServiceUrl = config.heroServiceUrl || "http://localhost:5000/api";
     this.attachmentService = new AttachmentService();
   }
 
@@ -22,9 +22,9 @@ class MessageService {
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
         content: messageData.content,
-        parentMessage: messageData.parentMessage || undefined,
-        heroContext: messageData.heroContext || undefined,
-        attachmentId: messageData.attachmentId || undefined,
+        parentMessage: messageData.parentMessage || null,
+        heroContext: messageData.heroContext || null,
+        attachmentId: messageData.attachmentId || null,
         status: "SENT",
       });
   
@@ -66,7 +66,7 @@ class MessageService {
       }
   
       // Get sender profile for this message
-      const sender = await this.getUserProfile(messageData.senderId);
+      const sender = await userProfileService.getUser(messageData.senderId);
   
       // Handle parent message if exists
       let parentMessageWithSender = null;
@@ -81,10 +81,9 @@ class MessageService {
           // Call API to get sender profile of parent
           if (parentSenderId) {
             try {
-              const { data } = await axios.get(`${this.authServiceUrl}/profile/${parentSenderId}`);
-              parentSender = data;
+              parentSender = await userProfileService.getUser(parentSenderId);
             } catch (err) {
-              parentSender = null; // fallback in case of error
+              parentSender = null;
             }
           }
   
@@ -96,11 +95,14 @@ class MessageService {
       }
   
       // Return message with sender and parent info (if any)
-      return {
+      const result = {
         ...savedMessage.toObject(),
         sender,
         parentMessage: parentMessageWithSender,
       };
+      // Publish to Redis
+      await publish(REDIS_CHANNEL.CHAT_MESSAGE, { conversationId: messageData.conversationId, message: result });
+      return result;
     } catch (error) {
       throw new Error("Error creating message: " + error.message);
     }
@@ -154,22 +156,13 @@ class MessageService {
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const allUserIds = [...new Set([...senderIds, ...reactionUserIds])];
     let users = {};
-
     if (allUserIds.length) {
-      await Promise.all(
-        allUserIds.map(async (userId) => {
-          try {
-            const { data } = await axios.get(
-              `${this.authServiceUrl}/profile/${userId}`
-            );
-            if (data) {
-              users[userId] = data;
-            }
-          } catch (err) {
-            users[userId] = null;
-          }
-        })
-      );
+      const usersArr = await userProfileService.getUsers(allUserIds);
+      usersArr.forEach((user) => {
+        if (user && user._id) {
+          users[user._id] = user;
+        }
+      });
     }
 
     const parentMessageIds = messages
@@ -188,26 +181,11 @@ class MessageService {
       // Fetch parent message senders
       let parentSenders = {};
       if (parentSenderIds.length) {
-        await Promise.all(
-          parentSenderIds.map(async (userId) => {
-            if (!users[userId]) { // Only fetch if not already fetched
-              try {
-                const { data } = await axios.get(
-                  `${this.authServiceUrl}/profile/${userId}`
-                );
-                if (data) {
-                  users[userId] = data;
-                  parentSenders[userId] = data;
-                }
-              } catch (err) {
-                users[userId] = null;
-                parentSenders[userId] = null;
-              }
-            } else {
-              parentSenders[userId] = users[userId];
-            }
-          })
-        );
+        const parentSendersArr = await userProfileService.getUsers(parentSenderIds);
+        parentSenderIds.forEach((userId, idx) => {
+          parentSenders[userId] = parentSendersArr[idx] || null;
+          if (!users[userId]) { users[userId] = parentSendersArr[idx] || null; }
+        });
       }
       
       // Populate parent messages with sender info
@@ -266,61 +244,6 @@ class MessageService {
     };
   }
 
-  async updateMessageStatus(messageId, status) {
-    const message = await Message.findByIdAndUpdate(
-      messageId,
-      { status },
-      { new: true }
-    );
-    return message;
-  }
-
-  async deleteMessageGlobally(messageId) {
-    return Message.updateOne(
-      { _id: messageId },
-      { $set: { isDeleteGlobal: true } }
-    );
-  }
-
-  async deleteMessagePersonally(messageId, userId) {
-    return Message.updateOne(
-      { _id: messageId },
-      { $addToSet: { deletedForUserIds: userId } }
-    );
-  }
-
-  async addReaction(messageId, userId, emoji) {
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return null;
-    }
-
-    const existingReaction = message.reactions.find(
-      (r) => r.userId.toString() === userId
-    );
-    if (existingReaction) {
-      existingReaction.emoji = emoji;
-    } else {
-      message.reactions.push({ userId, emoji });
-    }
-
-    await message.save();
-    return message;
-  }
-
-  async removeReaction(messageId, userId) {
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return null;
-    }
-
-    message.reactions = message.reactions.filter(
-      (r) => r.userId.toString() !== userId
-    );
-    await message.save();
-    return message;
-  }
-
   async updateMessage(messageId, content) {
     try {
       const message = await Message.findByIdAndUpdate(
@@ -332,6 +255,9 @@ class MessageService {
       if (!message) {
         return null;
       }
+      
+      await publish(REDIS_CHANNEL.MESSAGE_UPDATED, message);
+
       return message;
     } catch (error) {
       throw new Error("Error updating message: " + error.message);
@@ -355,7 +281,18 @@ class MessageService {
   
       const replies = await Message.find({ parentMessage: messageId }).select('_id').lean();
       const affectedReplies = replies.map(reply => reply._id.toString());
-  
+      // emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_DELETED_GLOBAL, {
+      //             messageId,
+      //             conversationId: message.conversationId.toString(),
+      //             affectedReplies
+      //           });
+
+      await publish(REDIS_CHANNEL.MESSAGE_DELETED, {
+        // messageId,
+        // conversationId: message.conversationId.toString(),
+        message,
+        affectedReplies
+      });
       return { message, affectedReplies };
     } catch (error) {
       throw new Error("Error deleting message globally: " + error.message);
@@ -407,13 +344,7 @@ class MessageService {
   }
 
   async getUserProfile(userId) {
-    try {
-      const { data } = await axios.get(`${this.authServiceUrl}/profile/${userId}`);
-      return data;
-    } catch (error) {
-      console.error(`Failed to get profile for user ${userId}:`, error.message);
-      return null;
-    }
+    return userProfileService.getUser(userId);
   }
 }
 

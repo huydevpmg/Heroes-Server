@@ -7,11 +7,14 @@ import { initSocket } from './lib/socket/index.js';
 import routes from './routes/index.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import { registerRedisSubscribers } from './lib/redis/listener/index.js';
+import { connectRedis } from './lib/redis/redis.js';
 
 
 dotenv.config();
 
 const app = express();
+
 const httpServer = createServer(app);
 
 // Swagger configuration
@@ -46,7 +49,17 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:4200",
+    "http://localhost:8080",
+    "http://127.0.0.1:4200",
+    "http://host.docker.internal:4200"
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Authorization", "Content-Type"],
+  // credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -69,10 +82,13 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });
+// Redis
 
 // Connect to MongoDB
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await connectRedis();
+    registerRedisSubscribers();
     const PORT = process.env.PORT || 3000;
     httpServer.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

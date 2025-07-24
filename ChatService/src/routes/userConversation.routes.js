@@ -20,9 +20,6 @@ router.post('/:userConversationId/labels', userConversationController.addLabel);
 // Remove label
 router.delete('/:userConversationId/labels', userConversationController.removeLabel);
 
-// Mark as read
-router.put('/:userConversationId/read', userConversationController.markAsRead);
-
 // Toggle pin
 router.put('/:userConversationId/pin', userConversationController.togglePin);
 

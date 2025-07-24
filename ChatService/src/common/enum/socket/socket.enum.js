@@ -37,9 +37,12 @@ export const EVENTS = {
   USER_JOINED_CONVERSATION: 'user_joined_conversation',
   MEMBER_ADDED: 'member_added',
   MEMBER_REMOVED: 'member_removed',
-
+  LEAVE_GROUP_NOTIFY: 'user_left_group_notify',
+  LEAVE_GROUP_: 'leave_group',
+  
   // Message status events
   MARK_AS_READ: 'mark_as_read',
+  READ_RECEIPT_UPDATED: 'read_receipt_updated',
 
   // Attachment events
   ATTACHMENT_CREATED: 'attachment_created',

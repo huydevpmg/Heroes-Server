@@ -5,11 +5,9 @@ import { protectRoute } from '../middleware/socketAuth.js';
 const router = express.Router();
 const conversationController = new ConversationController();
 
-//POST 1on1 conversation
-router.post('/1on1', protectRoute, conversationController.findOrCreate1on1Conversation);
 
-//POST group conversation
-router.post('/', protectRoute, conversationController.createConversation);
+//POST group or 1-1 conversation
+router.post('/', protectRoute, conversationController.findOrCreateConversation);
 
 // POST add members to group
 router.post('/:id/members', protectRoute, conversationController.addMemberToGroup);

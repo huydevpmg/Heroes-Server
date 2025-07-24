@@ -80,8 +80,7 @@ export const socketAuth = (socket, next) => {
       return next(new Error('Authentication error: Invalid or expired token'));
     }
 
-    // Attach user data to the socket
-    socket.userId = decoded.id; // Changed from userId to id to match token payload
+    socket.userId = decoded.id;
     socket.username = decoded.username;
     next();
   });

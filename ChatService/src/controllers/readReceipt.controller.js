@@ -1,6 +1,6 @@
 import ReadReceiptService from "../services/readReceipt.service.js";
 import { emitToRoom } from "../lib/socket/index.js";
-import { EVENTS } from "../lib/socket/events.enum.js";
+import { EVENTS } from "../common/enum/socket/socket.enum.js";
 
 class ReadReceiptController {
   constructor() {
@@ -27,15 +27,6 @@ class ReadReceiptController {
         conversationId
       );
 
-      emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
-        messageId,
-        userId,
-        readAt: receipt.readAt,
-        conversationId,
-        user: receipt.user,
-        type: 'single',
-      });
-
       return res.status(200).json({
         message: 'Message marked as read successfully',
         data: receipt,
@@ -60,16 +51,6 @@ class ReadReceiptController {
         userId,
         conversationId
       );
-
-      emitToRoom(conversationId, EVENTS.READ_RECEIPT_UPDATED, {
-        userId,
-        messageIds,
-        readAt: new Date(),
-        conversationId,
-        user: receipts[0]?.user || null,
-        receipts,
-        type: 'bulk',
-      });
 
       return res.status(200).json({
         message: 'Messages marked as read successfully',

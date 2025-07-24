@@ -1,7 +1,7 @@
 import MessageService from '../services/message.service.js';
 import { emitToRoom } from '../lib/socket/index.js';
-import { MessageDeleteType } from '../common/enum/message-delete-type.enum.js';
-import { EVENTS } from '../common/enum/socket.enum.js';
+import { MessageDeleteType } from '../common/enum/message/message-delete-type.enum.js';
+import { EVENTS } from '../common/enum/socket/socket.enum.js';
 
 class MessageController {
   constructor() {
@@ -19,8 +19,7 @@ class MessageController {
         heroContext,
         attachmentId,
       });
-
-      emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
+      // emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
       return res.status(201).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -39,27 +38,7 @@ class MessageController {
       return res.status(500).json({ message: error.message });
     }
   };
-
-  updateMessageStatus = async (req, res) => {
-    try {
-      const { messageId } = req.params;
-      const { status } = req.body;
-      const message = await this.messageService.updateMessageStatus(messageId, status);
-      if (!message) {
-        return res.status(404).json({ message: 'Message not found' });
-      }
-
-      emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_STATUS_UPDATED, {
-        messageId,
-        status,
-      });
-
-      return res.status(200).json(message);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-
+  
   updateMessage = async (req, res) => {
     try {
       const { messageId } = req.params;
@@ -74,7 +53,7 @@ class MessageController {
         return res.status(404).json({ message: 'Message not found' });
       }
 
-      emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_UPDATED, message);
+      // emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_UPDATED, message);
       
       return res.status(200).json(message);
     } catch (error) {
@@ -101,27 +80,12 @@ class MessageController {
         const result = await this.messageService.deleteMessageForEveryone(messageId);
         message = result?.message;
         affectedReplies = result?.affectedReplies || [];
-        if (message) {
-          emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_DELETED_GLOBAL, {
-            messageId,
-            conversationId: message.conversationId.toString(),
-            affectedReplies
-          });
-        }
       } else {
         if (!userId) {
           return res.status(400).json({ message: 'User ID is required for personal delete' });
         }
   
         message = await this.messageService.deleteMessageForUser(messageId, userId);
-  
-        if (message) {
-          emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_DELETED_PERSONAL, {
-            messageId,
-            userId,
-            conversationId: message.conversationId.toString()
-          });
-        }
       }
   
       if (!message) {
@@ -134,47 +98,6 @@ class MessageController {
         affectedReplies
       });
   
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-
-  addReaction = async (req, res) => {
-    try {
-      const { messageId } = req.params;
-      const { userId, emoji } = req.body;
-      const message = await this.messageService.addReaction(messageId, userId, emoji);
-      if (!message) {
-        return res.status(404).json({ message: 'Message not found' });
-      }
-
-      emitToRoom(message.conversationId.toString(), EVENTS.REACTION_ADDED, {
-        messageId,
-        reaction: { userId, emoji },
-      });
-
-      return res.status(200).json(message);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-
-  removeReaction = async (req, res) => {
-    try {
-      const { messageId } = req.params;
-      const { userId } = req.body;
-      const message = await this.messageService.removeReaction(messageId, userId);
-      if (!message) {
-        return res.status(404).json({ message: 'Message not found' });
-      }
-
-      // Emit socket event after successful reaction removal
-      emitToRoom(message.conversationId.toString(), EVENTS.REACTION_REMOVED, {
-        messageId,
-        userId,
-      });
-
-      return res.status(200).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }

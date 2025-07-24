@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { generateAccessToken, generateRefreshToken, verifyToken } from "../middleware/auth.js";
+import { publish } from "../lib/redis/redis.js";
+import { REDIS_CHANNEL } from "../common/redis/redis.enum.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -11,7 +13,7 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=4F46E5&color=ffffff`;
 
     const newUser = new User({
       username,
@@ -22,6 +24,24 @@ export const registerUser = async (req, res) => {
     });
 
     const savedUser = await newUser.save();
+
+    // Publish event to Redis for cache invalidation/cross-service sync
+    try {
+      await publish(REDIS_CHANNEL.USER_PROFILE_UPDATED, {
+        userId: savedUser._id,
+        user: {
+          _id: savedUser._id,
+          username: savedUser.username,
+          email: savedUser.email,
+          fullName: savedUser.fullName,
+          avatar: savedUser.avatar
+        }
+      });
+      console.log("[UserController] Published user_profile_updated event for user:", savedUser._id);
+    } catch (err) {
+      console.error("[UserController] Failed to publish user_profile_updated event:", err);
+    }
+
     res.status(201).json(savedUser);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -1,28 +1,33 @@
 import MessageReadReceipt from "../models/messageReadReceipt.model.js";
 import Message from "../models/message.model.js";
-import axios from "axios";
 import UserConversation from "../models/userConversation.model.js";
+import userProfileService from "./userProfile.service.js";
+import { publish } from "../lib/redis/redis.js";
+import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
+import { EVENTS } from "../common/enum/socket/socket.enum.js";
 
 class ReadReceiptService {
   async markMultipleMessagesAsRead(messageIds, userId, conversationId) {
     try {
       const now = new Date();
-  
-      const messages = await Message.find({ _id: { $in: messageIds } }).select("_id");
+
+      const messages = await Message.find({ _id: { $in: messageIds } }).select(
+        "_id"
+      );
       const validMessageIds = messages.map((m) => m._id.toString());
-  
+
       const bulkOps = validMessageIds.map((messageId) => ({
         updateOne: {
           filter: { messageId, userId },
           update: {
-            $setOnInsert: { messageId, userId, conversationId, readAt: now }
+            $setOnInsert: { messageId, userId, conversationId, readAt: now },
           },
-          upsert: true
-        }
+          upsert: true,
+        },
       }));
-  
+
       await MessageReadReceipt.bulkWrite(bulkOps, { ordered: false });
-  
+
       if (validMessageIds.length) {
         const lastMessageId = validMessageIds[validMessageIds.length - 1];
         await UserConversation.updateOne(
@@ -30,26 +35,43 @@ class ReadReceiptService {
           { $set: { lastReadAt: now, lastReadMessage: lastMessageId } }
         );
       }
-  
-      const user = await this.getUserData(userId);
-  
-      return validMessageIds.map((messageId) => ({
+
+      const user = await userProfileService.getUser(userId);
+
+      const receipts = validMessageIds.map((messageId) => ({
         messageId,
         userId,
         readAt: now,
         conversationId,
-        user
+        user,
       }));
+
+      const payload = {
+        userId,
+        conversationId,
+        user,
+        readAt: now,
+        receipts,
+        type: receipts.length === 1 ? "single" : "bulk",
+        messageIds: receipts.map((r) => r.messageId),
+      };
+
+      await publish(REDIS_CHANNEL.READ_RECEIPT, payload);
+
+      return receipts;
     } catch (error) {
       throw new Error("Error marking messages as read: " + error.message);
     }
   }
-  
+
   async markMessageAsRead(messageId, userId, conversationId) {
-    const [result] = await this.markMultipleMessagesAsRead([messageId], userId, conversationId);
+    const [result] = await this.markMultipleMessagesAsRead(
+      [messageId],
+      userId,
+      conversationId
+    );
     return { ...result, isNewRead: true };
   }
-  
 
   async getMessageReadReceipts(messageId, conversationId) {
     try {
@@ -72,7 +94,7 @@ class ReadReceiptService {
       const userIds = [
         ...new Set(uniqueReceipts.map((r) => r.userId.toString())),
       ];
-      const users = await this.getUsersFromAuthService(userIds);
+      const users = await this.getUsersFromCache(userIds);
 
       return uniqueReceipts.map((receipt) => ({
         messageId: receipt.messageId,
@@ -99,7 +121,7 @@ class ReadReceiptService {
       const userIds = [
         ...new Set(readReceipts.map((r) => r.userId.toString())),
       ];
-      const users = await this.getUsersFromAuthService(userIds);
+      const users = await this.getUsersFromCache(userIds);
 
       const receiptsByMessage = {};
       readReceipts.forEach((receipt) => {
@@ -155,21 +177,19 @@ class ReadReceiptService {
         (userId) => receiptsByUser[userId].size === messageIds.length
       );
 
-      const users = await this.getUsersFromAuthService(usersWhoReadAll);
+      const users = await this.getUsersFromCache(usersWhoReadAll);
       return usersWhoReadAll.map((userId) => users[userId]).filter(Boolean);
     } catch (error) {
       throw new Error("Error getting users who read all: " + error.message);
     }
   }
 
-  async getUsersFromAuthService(userIds) {
+  async getUsersFromCache(userIds) {
     try {
       if (!userIds || !userIds.length) {
         return {};
       }
-      const usersArr = await Promise.all(
-        userIds.map((id) => this.getUserData(id))
-      );
+      const usersArr = await userProfileService.getUsers(userIds);
       const userMap = {};
       usersArr.forEach((user) => {
         if (user && user._id) {
@@ -178,24 +198,13 @@ class ReadReceiptService {
       });
       return userMap;
     } catch (error) {
-      console.error("Error fetching users from AuthService:", error.message);
+      console.error("Error fetching users from cache:", error.message);
       return {};
     }
   }
 
   async getUserData(userId) {
-    try {
-      const response = await axios.get(
-        `${
-          process.env.AUTH_SERVICE_URL || "http://localhost:4000"
-        }api/profile/${userId}`
-      );
-      const { _id, fullName, username, email, avatar } = response.data;
-      return { _id, fullName, username, email, avatar };
-    } catch (error) {
-      console.error("Error fetching user data:", error.message);
-      return null;
-    }
+    return userProfileService.getUser(userId);
   }
 
   /**
@@ -204,10 +213,13 @@ class ReadReceiptService {
   async getUnreadMessageIds(conversationId, userId) {
     const messages = await Message.find({ conversationId });
     const receipts = await MessageReadReceipt.find({ conversationId, userId });
-    const readIds = new Set(receipts.map(r => r.messageId.toString()));
+    const readIds = new Set(receipts.map((r) => r.messageId.toString()));
     return messages
-      .filter(m => !readIds.has(m._id.toString()) && m.senderId.toString() !== userId)
-      .map(m => m._id.toString());
+      .filter(
+        (m) =>
+          !readIds.has(m._id.toString()) && m.senderId.toString() !== userId
+      )
+      .map((m) => m._id.toString());
   }
 }
 

@@ -1,6 +1,8 @@
 import Attachment from '../models/attachment.model.js';
 import { uploadFileToGCS } from '../lib/gsc.js';
 import Conversation from '../models/conversation.model.js';
+import { publish } from '../lib/redis/redis.js';
+import { REDIS_CHANNEL } from '../common/enum/redis/redis.enum.js';
 
 class AttachmentService {
   async createAttachment({ file, uploadedBy, conversationId, fileName }) {
@@ -29,6 +31,12 @@ class AttachmentService {
         { new: true }
       );
     }
+
+    await publish(REDIS_CHANNEL.ATTACHMENT_CREATED, {
+      attachment,
+    });
+
+
     return attachment;
   }
 

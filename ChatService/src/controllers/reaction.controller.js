@@ -1,6 +1,6 @@
 import ReactionService from "../services/reaction.service.js";
 import { emitToRoom } from "../lib/socket/index.js";
-import { EVENTS } from "../lib/socket/events.enum.js";
+import { EVENTS } from "../common/enum/socket/socket.enum.js";
 
 class ReactionController {
   constructor() {
@@ -15,10 +15,6 @@ class ReactionController {
         messageId,
         emoji,
         userId,
-      });
-
-      emitToRoom(conversationId, EVENTS.MESSAGE_REACTION, {
-        message,
       });
 
       res.json({ success: true, message });
@@ -36,11 +32,7 @@ class ReactionController {
         emoji,
         userId,
       });
-
-      emitToRoom(conversationId, EVENTS.REMOVE_REACTION, {
-        message,
-      });
-
+      
       res.json({ success: true, message });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });

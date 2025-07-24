@@ -2,11 +2,38 @@ import axios from "axios";
 import Conversation from "../models/conversation.model.js";
 import UserConversation from "../models/userConversation.model.js";
 import Message from "../models/message.model.js";
+import { config } from "../config/index.js";
+import userProfileService from "./userProfile.service.js";
+import { publish } from "../lib/redis/redis.js";
+import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
+
 class ConversationService {
   constructor() {
-    this.authServiceUrl = "http://localhost:4000/api";
-    this.heroServiceUrl = "http://localhost:5000/api";
+    this.heroServiceUrl = config.heroServiceUrl || "http://localhost:5000/api";
   }
+
+  async findOrCreateConversation({ name, participants, isGroup, heroContext, createdBy, attachments = [] }) {
+    if (!isGroup && participants.length === 2) {
+      const existingConversation = await Conversation.findOne({
+        isGroup: false,
+        participants: { $all: participants }
+      });
+  
+      if (existingConversation) {
+        return existingConversation;
+      }
+    }
+  
+    return this.createConversation({
+      name,
+      participants,
+      isGroup,
+      heroContext,
+      createdBy,
+      attachments
+    });
+  }
+  
 
   async createConversation(conversationData) {
     const conversation = new Conversation(conversationData);
@@ -22,7 +49,7 @@ class ConversationService {
     await Promise.all(userConversationPromises);
 
     if (conversation.isGroup) {
-      const user = await this.getUserData(conversation.createdBy);
+      const user = await userProfileService.getUser(conversation.createdBy);
       const systemMsg = await Message.create({
         conversationId: conversation._id,
         senderId: conversation.createdBy,
@@ -40,6 +67,7 @@ class ConversationService {
       });
     }
 
+    await publish(REDIS_CHANNEL.CONVERSATION_CREATED, conversation);
     return conversation;
   }
 
@@ -121,7 +149,7 @@ class ConversationService {
           attachments: conversation.attachments || [],
           lastAttachmentName: conversation.lastAttachmentName || "",
           labels: uc.labels || [],
-          unreadCount, // Thêm trường này để trả về số tin nhắn chưa đọc
+          unreadCount,
         };
       })
     );
@@ -141,7 +169,7 @@ class ConversationService {
 
   async enrichConversationData(conversation, currentUserId) {
     const [participants, userConversation] = await Promise.all([
-      Promise.all(conversation.participants.map((id) => this.getUserData(id))),
+      Promise.all(conversation.participants.map((id) => userProfileService.getUser(id))),
       UserConversation.findOne({
         conversationId: conversation._id,
         userId: currentUserId,
@@ -204,16 +232,7 @@ class ConversationService {
   }
 
   async getUserData(userId) {
-    try {
-      const response = await axios.get(
-        `${this.authServiceUrl}/profile/${userId}`
-      );
-      const { _id, fullName, username, email, avatar } = response.data;
-      return { _id, fullName, username, email, avatar };
-    } catch (error) {
-      console.error("Error fetching user data:", error.message);
-      return null;
-    }
+    return userProfileService.getUser(userId);
   }
 
   async getHeroData(heroId) {
@@ -234,23 +253,6 @@ class ConversationService {
 
   async getMessageById(messageId) {
     return Message.findById(messageId);
-  }
-
-  async findOrCreate1on1Conversation(userId1, userId2) {
-    const existingConversation = await Conversation.findOne({
-      isGroup: false,
-      participants: { $all: [userId1, userId2] },
-    });
-
-    if (existingConversation) {
-      return existingConversation;
-    }
-
-    return this.createConversation({
-      participants: [userId1, userId2],
-      isGroup: false,
-      createdBy: userId1,
-    });
   }
 
   async updateConversation(id, updateData) {
@@ -281,13 +283,7 @@ class ConversationService {
   }
 
   async getAllUsers() {
-    try {
-      const response = await axios.get(`${this.authServiceUrl}/profile`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      throw new Error("Error fetching users");
-    }
+    return userProfileService.getAllUsers();
   }
 
   async addMemberToGroup(conversationId, memberIds, currentUserId) {
@@ -342,11 +338,11 @@ class ConversationService {
 
       // Get user data for new members and create system message
       const newMemberUsers = await Promise.all(
-        newMembers.map((userId) => this.getUserData(userId))
+        newMembers.map((userId) => userProfileService.getUser(userId))
       );
 
       // Get data of the user who performed the action
-      const currentUser = await this.getUserData(currentUserId);
+      const currentUser = await userProfileService.getUser(currentUserId);
 
       // Create content for multiple users added
       const memberNames = newMemberUsers
@@ -383,6 +379,15 @@ class ConversationService {
         lastMessage: systemMsg._id,
         updatedAt: new Date(),
       });
+
+      // Publish USER_ADDED event to Redis for all participants
+      const payload = {
+        conversationId,
+        addedMembers: newMembers,
+        conversation: updatedConversation,
+        systemMessage: systemMsg
+      };
+      await publish(REDIS_CHANNEL.ADD_MEMBER, payload);
 
       return {
         conversation: updatedConversation,
@@ -449,8 +454,8 @@ class ConversationService {
 
       // Get user data and create system message
       const [user, currentUser] = await Promise.all([
-        this.getUserData(userId),
-        this.getUserData(currentUserId),
+        userProfileService.getUser(userId),
+        userProfileService.getUser(currentUserId),
       ]);
 
       const removedUserName = user?.fullName || user?.username || "User";
@@ -489,7 +494,15 @@ class ConversationService {
         updatedAt: new Date(),
       });
 
+      await publish(REDIS_CHANNEL.REMOVE_MEMBER, {
+        conversationId,
+        removedUserId: userId,
+        conversation: updatedConversation,
+        systemMessage: systemMsg,
+      });
+
       return {
+        conversationId,
         conversation: updatedConversation,
         removedUserId: userId,
         systemMessage: systemMsg,
@@ -505,7 +518,7 @@ class ConversationService {
     });
     await UserConversation.deleteOne({ conversationId, userId });
 
-    const user = await this.getUserData(userId);
+    const user = await userProfileService.getUser(userId);
     const systemMsg = await Message.create({
       conversationId,
       senderId: userId,
@@ -522,6 +535,27 @@ class ConversationService {
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage: systemMsg._id,
     });
+
+    // Publish USER_LEAVE event to Redis for all participants
+    await publish(REDIS_CHANNEL.LEAVE_GROUP, {
+        conversationId: conversationId.toString(),
+        userId: userId.toString(),
+        message: systemMsg.content,
+        createdAt: systemMsg.createdAt,
+        systemMessage: {
+          content: systemMsg.content,
+          createdAt: systemMsg.createdAt,
+          meta: systemMsg.meta,
+      },
+    });
+    // emitToRoom(conversationId, EVENTS.RECEIVE_MESSAGE, {
+    //   conversationId,
+    //   type: 'SYSTEM',
+    //   systemType: 'USER_LEAVE',
+    //   meta: { userId, fullName: fullName },
+    // });
+    // emitToRoom(conversationId, EVENTS.LEAVE_GROUP_NOTIFY, { userId, conversationId });
+    // emitToUser(userId, EVENTS.LEAVE_GROUP, { userId, conversationId });
 
     return true;
   }

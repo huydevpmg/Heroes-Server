@@ -1,3 +1,5 @@
+import { REDIS_CHANNEL } from "../common/redis/redis.enum.js";
+import { publish } from "../lib/redis/redis.js";
 import User from "../models/user.model.js";
 
 export const getProfileByUserId = async (req, res) => {
@@ -20,7 +22,7 @@ export const getProfileByUserId = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-      const { userId } = req.params;
+    const { userId } = req.params;
     const updates = req.body;
 
     const profile = await User.findOneAndUpdate({ _id: userId }, updates, {
@@ -29,6 +31,18 @@ export const updateProfile = async (req, res) => {
 
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
+    }
+    try {
+      await publish(REDIS_CHANNEL.USER_PROFILE_UPDATED, {user: profile});
+      console.log(
+        "[ProfileController] Published user_profile_updated event for user:",
+        userId
+      );
+    } catch (err) {
+      console.error(
+        "[ProfileController] Failed to publish user_profile_updated event:",
+        err
+      );
     }
 
     res.status(200).json(profile);
@@ -41,14 +55,14 @@ export const checkEmailExists = async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+      return res.status(400).json({ message: "Email is required" });
     }
 
     const existing = await User.findOne({ email });
     return res.status(200).json({ exists: !!existing });
   } catch (error) {
-    console.error('Error in checkEmailExists:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error in checkEmailExists:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -57,7 +71,7 @@ export const getAllUsers = async (req, res) => {
     const users = await User.find();
     res.status(200).json(users);
   } catch (error) {
-    console.log('Error fetching users:', error);
+    console.log("Error fetching users:", error);
     res.status(500).json({ message: "INTERNAL SERVER ERROR" });
   }
-}
+};

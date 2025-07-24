@@ -17,7 +17,8 @@ pids/
 # Environment variables
 .env
 .env.*.local
-
+.env.dev
+.env.prod
 # Compiled output
 dist/
 build/

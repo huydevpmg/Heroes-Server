@@ -1,6 +1,6 @@
 import UserConversationService from '../services/userConversation.service.js';
 import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../common/enum/socket.enum.js';
+import { EVENTS } from '../common/enum/socket/socket.enum.js';
 
 class UserConversationController {
   constructor() {
@@ -26,34 +26,6 @@ class UserConversationController {
     }
   };
 
-  markAsRead = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const { userConversationId } = req.params;
-      const { messageId } = req.body;
-      const result = await this.userConversationService.markAsRead(
-        userConversationId,
-        userId,
-        messageId,
-      );
-      if (!result) {
-        return res.status(404).json({ message: 'User conversation not found' });
-      }
-
-      // Emit socket event after successful mark as read
-      emitToRoom(result.conversationId, EVENTS.MARK_AS_READ, {
-        userConversationId,
-        messageId,
-        userId,
-        lastReadAt: result.lastReadAt
-      });
-
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-
   togglePin = async (req, res) => {
     try {
       const userId = req.user.id;
@@ -62,13 +34,6 @@ class UserConversationController {
       if (!result) {
         return res.status(404).json({ message: 'User conversation not found' });
       }
-
-      // Emit socket event after successful pin toggle
-      emitToRoom(result.conversationId, EVENTS.PIN_CONVERSATION, {
-        userConversationId,
-        isPinned: result.isPinned,
-        userId
-      });
 
       return res.status(200).json(result);
     } catch (error) {
@@ -101,13 +66,6 @@ class UserConversationController {
         return res.status(404).json({ message: 'User conversation not found' });
       }
 
-      // Emit socket event after successful label addition
-      emitToRoom(result.conversationId, EVENTS.ADD_LABEL, {
-        userConversationId,
-        label,
-        userId
-      });
-
       return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -123,14 +81,6 @@ class UserConversationController {
       if (!result) {
         return res.status(404).json({ message: 'User conversation not found' });
       }
-
-      // Emit socket event after successful label removal
-      emitToRoom(result.conversationId, EVENTS.REMOVE_LABEL, {
-        userConversationId,
-        label,
-        userId
-      });
-
       return res.status(200).json(result);
     } catch (error) {
       return res.status(500).json({ message: error.message });

@@ -1,4 +1,4 @@
-import { EVENTS } from "../../common/enum/socket.enum.js";
+import { EVENTS } from "../../common/enum/socket/socket.enum.js";
 
 export const registerUserSocket = (io, socket, onlineUsers) => {
   socket.join(socket.userId);
@@ -23,14 +23,6 @@ export const registerUserSocket = (io, socket, onlineUsers) => {
     }
   });
 
-  socket.on(EVENTS.TYPING, (data) => {
-    socket.to(data.conversationId).emit(EVENTS.USER_TYPING, {
-      userId: socket.userId,
-      isTyping: data.isTyping,
-    });
-  });
-
-  // Optional: handle socket error
   socket.on('error', (error) => {
     console.error(`Socket error for user ${socket.userId}:`, error);
   });

@@ -1,12 +1,9 @@
 import MessageReaction from "../models/reaction.model.js";
 import Message from "../models/message.model.js";
-import axios from "axios";
-
+import userProfileService from "./userProfile.service.js";
+import { publish } from "../lib/redis/redis.js";
+import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
 class ReactionService {
-  constructor() {
-    this.authServiceUrl = "http://localhost:4000/api";
-  }
-
   async addReaction({ messageId, emoji, userId }) {
     let reaction = await MessageReaction.findOne({ messageId, emoji });
     if (reaction) {
@@ -27,14 +24,7 @@ class ReactionService {
     // Populate user data for each reaction
     reactions = await Promise.all(
       reactions.map(async (reaction) => {
-        const userObjs = await Promise.all(
-          reaction.users.map(async (uid) => {
-            const { data } = await axios.get(
-              `${this.authServiceUrl}/profile/${uid}`
-            );
-            return data || { _id: uid };
-          })
-        );
+        const userObjs = await userProfileService.getUsers(reaction.users);
         reaction = reaction.toObject();
         reaction.users = userObjs;
         return reaction;
@@ -43,6 +33,8 @@ class ReactionService {
 
     const messageObj = message.toObject();
     messageObj.reactions = reactions;
+
+    await publish(REDIS_CHANNEL.MESSAGE_REACTION, messageObj);
     return messageObj;
   }
 
@@ -64,14 +56,7 @@ class ReactionService {
     // Populate user data for each reaction
     reactions = await Promise.all(
       reactions.map(async (reaction) => {
-        const userObjs = await Promise.all(
-          reaction.users.map(async (uid) => {
-            const { data } = await axios.get(
-              `${this.authServiceUrl}/profile/${uid}`
-            );
-            return data || { _id: uid };
-          })
-        );
+        const userObjs = await userProfileService.getUsers(reaction.users);
         reaction = reaction.toObject();
         reaction.users = userObjs;
         return reaction;
@@ -80,6 +65,8 @@ class ReactionService {
 
     const messageObj = message.toObject();
     messageObj.reactions = reactions;
+    
+    await publish(REDIS_CHANNEL.REMOVE_REACTION, messageObj);
     return messageObj;
   }
 

@@ -1,43 +1,28 @@
 import ConversationService from '../services/conversation.service.js';
-import { emitToRoom, emitToUser } from '../lib/socket/index.js';
-import { EVENTS } from '../common/enum/socket.enum.js';
-
 class ConversationController {
   constructor() {
     this.conversationService = new ConversationService();
   }
 
-  createConversation = async (req, res) => {
+  findOrCreateConversation = async (req, res) => {
     try {
-      const { name, participants, isGroup, heroContext, createdBy } = req.body;
-      const conversation = await this.conversationService.createConversation({
+      const { name, participants, isGroup, heroContext } = req.body;
+      const createdBy = req.user.id;
+  
+      const conversation = await this.conversationService.findOrCreateConversation({
         name,
         participants,
         isGroup,
         heroContext,
         createdBy,
-        attachments: [],
+        attachments: []
       });
-
-      // Emit socket event for group creation
-      if (isGroup) {
-        conversation.participants.forEach((memberId) => {
-          emitToUser(memberId.toString(), EVENTS.GROUP_CREATED, {
-            _id: conversation._id.toString(),
-            name: conversation.name,
-            participants: conversation.participants.map(id => id.toString()),
-            isGroup: conversation.isGroup,
-            createdBy: conversation.createdBy.toString(),
-            createdAt: conversation.createdAt
-          });
-        });
-      }
-
-      return res.status(201).json(conversation);
+      return res.status(200).json(conversation);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
   };
+  
 
   getConversations = async (req, res) => {
     try {
@@ -64,19 +49,6 @@ class ConversationController {
     }
   };
 
-  findOrCreate1on1Conversation = async (req, res) => {
-    try {
-      const userId1 = req.user.id;
-      const { participantId } = req.body;
-      const conversation = await this.conversationService.findOrCreate1on1Conversation(
-        userId1,
-        participantId,
-      );
-      return res.status(200).json(conversation);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
 
   updateConversation = async (req, res) => {
     try {
@@ -133,19 +105,6 @@ class ConversationController {
         currentUserId
       );
 
-      const payload = {
-        conversationId,
-        addedMembers: result.addedMembers,
-        conversation: result.conversation,
-        systemMessage: result.systemMessage
-      };
-
-      emitToRoom(conversationId, EVENTS.MEMBER_ADDED, payload);
-
-      result.addedMembers.forEach(memberId => {
-        emitToUser(memberId, EVENTS.MEMBER_ADDED, payload);
-      });
-
       return res.status(200).json({
         message: 'Members added successfully',
         data: result
@@ -181,14 +140,6 @@ class ConversationController {
 
       const result = await this.conversationService.removeMemberFromGroup(conversationId, userId, currentUserId);
 
-      // Emit socket event to notify all participants about member removal
-      emitToRoom(conversationId, EVENTS.MEMBER_REMOVED, {
-        conversationId,
-        removedUserId: result.removedUserId,
-        conversation: result.conversation,
-        systemMessage: result.systemMessage
-      });
-
       return res.status(200).json({
         message: 'Member removed successfully',
         data: result
@@ -213,15 +164,6 @@ class ConversationController {
       const { id: userId, fullName } = req.user;
       const { id: conversationId } = req.params;
       await this.conversationService.leaveGroup(conversationId, userId);
-
-      emitToRoom(conversationId, EVENTS.RECEIVE_MESSAGE, {
-        conversationId,
-        type: 'SYSTEM',
-        systemType: 'USER_LEAVE',
-        meta: { userId, fullName: fullName },
-      });
-      emitToRoom(conversationId, EVENTS.LEAVE_GROUP_NOTIFY, { userId, conversationId });
-      emitToUser(userId, EVENTS.LEAVE_GROUP, { userId, conversationId });
 
       return res.status(200).json({ success: true });
     } catch (error) {
