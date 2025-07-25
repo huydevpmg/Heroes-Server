@@ -19,7 +19,6 @@ class MessageController {
         heroContext,
         attachmentId,
       });
-      // emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
       return res.status(201).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -52,8 +51,6 @@ class MessageController {
       if (!message) {
         return res.status(404).json({ message: 'Message not found' });
       }
-
-      // emitToRoom(message.conversationId.toString(), EVENTS.MESSAGE_UPDATED, message);
       
       return res.status(200).json(message);
     } catch (error) {

@@ -127,7 +127,7 @@ class MessageService {
 
     const [messages, total] = await Promise.all([
       Message.find(query)
-        .sort({ createdAt: 1 })
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
