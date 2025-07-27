@@ -147,7 +147,6 @@ class ConversationService {
           isGroup: conversation.isGroup,
           createdBy: conversation.createdBy.toString(),
           attachments: conversation.attachments || [],
-          lastAttachmentName: conversation.lastAttachmentName || "",
           labels: uc.labels || [],
           unreadCount,
         };
@@ -203,9 +202,12 @@ class ConversationService {
   
     const enrichedLastMessage = lastMessage
       ? {
-          content: lastMessage.isDeleteGlobal
-            ? "Message was deleted"
-            : lastMessage.content,
+          content:
+            lastMessage.type === "ATTACHMENT"
+              ? `sent ${lastMessage.attachmentIds?.length || 0} attachments`
+              : lastMessage.isDeleteGlobal
+              ? "Message was deleted"
+              : lastMessage.content,
           type: lastMessage.type,
           createdAt: lastMessage.createdAt,
           senderId: lastMessage.senderId,
@@ -217,6 +219,7 @@ class ConversationService {
                 )?.fullName || "Unknown"
               )
             : undefined,
+          attachments: lastMessage.attachmentIds || [],
         }
       : null;
     return {
@@ -272,14 +275,6 @@ class ConversationService {
       console.error("Error updating conversation:", error);
       throw new Error("Error updating conversation");
     }
-  }
-
-  async updateLastAttachmentName(conversationId, lastAttachmentName) {
-    return Conversation.findByIdAndUpdate(
-      conversationId,
-      { lastAttachmentName },
-      { new: true }
-    );
   }
 
   async getAllUsers() {

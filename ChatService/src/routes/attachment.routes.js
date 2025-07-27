@@ -15,7 +15,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-router.post('/', upload.single('file'), controller.createAttachment);
+router.post('/', upload.array('files'), controller.createAttachments);
 router.get('/', controller.getAttachments);
 router.get('/type', controller.getAttachmentsByType);
 router.get('/:id', controller.getAttachmentById);

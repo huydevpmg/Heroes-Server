@@ -10,16 +10,15 @@ class MessageController {
 
   createMessage = async (req, res) => {
     try {
-      const { conversationId, senderId, content, parentMessage, heroContext, attachmentId } = req.body;
+      const { conversationId, senderId, content, parentMessage, heroContext, attachments } = req.body;
       const message = await this.messageService.createMessage({
         conversationId,
         senderId,
         content,
         parentMessage,
         heroContext,
-        attachmentId,
+        attachments,
       });
-      // emitToRoom(conversationId.toString(), EVENTS.RECEIVE_MESSAGE, message);
       return res.status(201).json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -76,7 +75,6 @@ class MessageController {
       let affectedReplies = [];
   
       if (deleteType === MessageDeleteType.EVERYONE) {
-        console.log('Deleting message for everyone');
         const result = await this.messageService.deleteMessageForEveryone(messageId);
         message = result?.message;
         affectedReplies = result?.affectedReplies || [];

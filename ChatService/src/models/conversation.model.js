@@ -31,10 +31,6 @@ const conversationSchema = new mongoose.Schema(
         ref: 'Attachment',
       },
     ],
-    lastAttachmentName: {
-      type: String,
-      default: ''
-    },
   },
   { timestamps: true }
 );

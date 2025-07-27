@@ -8,6 +8,7 @@ import { config } from "../config/index.js";
 import userProfileService from "./userProfile.service.js";
 import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
 import { publish } from "../lib/redis/redis.js";
+import Attachment from "../models/attachment.model.js";
 
 class MessageService {
   constructor() {
@@ -17,14 +18,32 @@ class MessageService {
 
   async createMessage(messageData) {
     try {
+      let attachmentIds = [];
+      if (messageData.attachments && Array.isArray(messageData.attachments) && messageData.attachments.length) {
+        const createdAttachments = await Attachment.insertMany(
+          messageData.attachments.map(att => ({
+            name: att.name,
+            url: att.url,
+            type: att.type,
+            size: att.size,
+            uploadedBy: messageData.senderId,
+            conversationId: messageData.conversationId,
+          }))
+        );
+        attachmentIds = createdAttachments.map(a => a._id);
+        await Conversation.findByIdAndUpdate(
+          messageData.conversationId,
+          { $push: { attachments: { $each: attachmentIds } } }
+        );
+      }
       // Create new message
       const message = new Message({
         conversationId: messageData.conversationId,
         senderId: messageData.senderId,
         content: messageData.content,
-        parentMessage: messageData.parentMessage || null,
-        heroContext: messageData.heroContext || null,
-        attachmentId: messageData.attachmentId || null,
+        parentMessage: messageData.parentMessage,
+        heroContext: messageData.heroContext,
+        attachmentIds: attachmentIds,
         status: "SENT",
       });
   
@@ -94,9 +113,12 @@ class MessageService {
         }
       }
   
-      // Return message with sender and parent info (if any)
+      const populatedMessage = await Message.findById(savedMessage._id)
+        .populate('attachmentIds')
+        .lean();
       const result = {
-        ...savedMessage.toObject(),
+        ...populatedMessage,
+        attachments: (populatedMessage.attachmentIds || []),
         sender,
         parentMessage: parentMessageWithSender,
       };
@@ -130,11 +152,11 @@ class MessageService {
         .sort({ createdAt: 1 })
         .skip(skip)
         .limit(limit)
+        .populate('attachmentIds')
         .lean(),
       Message.countDocuments(query)
     ]);
 
-    // Lấy reactions cho tất cả message
     const messageIds = messages.map(m => m._id);
     const reactionsArr = await MessageReaction.find({ messageId: { $in: messageIds } }).lean();
 
@@ -152,7 +174,6 @@ class MessageService {
       ),
     ];
 
-    // Lấy user profile cho tất cả sender và reaction users
     const senderIds = [...new Set(messages.map((m) => m.senderId?.toString()))];
     const allUserIds = [...new Set([...senderIds, ...reactionUserIds])];
     let users = {};
@@ -175,7 +196,6 @@ class MessageService {
         _id: { $in: parentMessageIds },
       }).lean();
       
-      // Get sender IDs for parent messages
       const parentSenderIds = parents.map(p => p.senderId?.toString()).filter(Boolean);
       
       // Fetch parent message senders
@@ -188,7 +208,6 @@ class MessageService {
         });
       }
       
-      // Populate parent messages with sender info
       parents.forEach((pm) => {
         parentMessages[pm._id] = {
           ...pm,
@@ -233,6 +252,7 @@ class MessageService {
         emoji: r.emoji,
         users: r.users.map(uid => users[uid.toString()] || null)
       })),
+      attachments: msg.attachmentIds || [] 
     }));
 
     const totalPages = Math.ceil(total / limit);
