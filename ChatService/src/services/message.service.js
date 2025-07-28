@@ -9,6 +9,7 @@ import userProfileService from "./userProfile.service.js";
 import { REDIS_CHANNEL } from "../common/enum/redis/redis.enum.js";
 import { publish } from "../lib/redis/redis.js";
 import Attachment from "../models/attachment.model.js";
+import UserConversationService from "./userConversation.service.js";
 
 class MessageService {
   constructor() {
@@ -124,6 +125,15 @@ class MessageService {
       };
       // Publish to Redis
       await publish(REDIS_CHANNEL.CHAT_MESSAGE, { conversationId: messageData.conversationId, message: result });
+      
+      const userConversation = await UserConversation.findOne({
+        conversationId: messageData.conversationId,
+        userId: messageData.senderId,
+      });
+      if (userConversation && userConversation.isArchived) {
+        await UserConversationService.toggleArchive(userConversation._id, messageData.senderId);
+      }
+  
       return result;
     } catch (error) {
       throw new Error("Error creating message: " + error.message);
