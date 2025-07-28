@@ -27,9 +27,6 @@ router.get('/:id', protectRoute, conversationController.getConversationById);
 //PUT update conversation
 router.patch('/:id', protectRoute, conversationController.updateConversation);
 
-// PATCH lastAttachmentName
-router.patch('/:id/last-attachment', protectRoute, conversationController.updateLastAttachmentName);
-
 // PATCH clear conversation
 router.patch('/:id/clear', protectRoute, conversationController.clearConversation);
 

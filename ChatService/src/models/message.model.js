@@ -30,20 +30,11 @@ const messageSchema = new mongoose.Schema(
                 required: false,
             }
         ],
-        attachmentId: {
+        attachmentIds: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Attachment',
-        },
-        // reactions: [
-        //     {
-        //         userId: { 
-        //             type: mongoose.Schema.Types.ObjectId 
-        //         },
-        //         emoji: { 
-        //             type: String 
-        //         },
-        //     }
-        // ],
+            default: []
+        }],
         isDeleteGlobal: { 
             type: Boolean, 
             default: false 
@@ -88,7 +79,6 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.post('save', async function(doc) {
     try {
-        // skip system messages without sender
         if (!doc.senderId) {
             return;
         }

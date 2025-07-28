@@ -1,26 +1,43 @@
 import AttachmentService from '../services/attachment.service.js';
-import { emitToRoom } from '../lib/socket/index.js';
-import { EVENTS } from '../common/enum/socket/socket.enum.js';
+import fs from 'fs/promises';
 
 class AttachmentController {
   constructor() {
     this.attachmentService = new AttachmentService();
   }
 
-  createAttachment = async (req, res) => {
+  createAttachments = async (req, res) => {
     try {
-      const { conversationId, uploadedBy, fileName } = req.body;
-      const file = req.file;
-      if (!file || !conversationId || !uploadedBy) {
-        return res.status(400).json({ message: 'Missing file, conversationId hoặc uploadedBy' });
+      const { conversationId, uploadedBy } = req.body;
+      const files = req.files;
+      if (!files?.length || !conversationId || !uploadedBy) {
+        return res.status(400).json({ message: 'Missing files, conversationId hoặc uploadedBy' });
       }
-      const attachment = await this.attachmentService.createAttachment({ file, conversationId, uploadedBy, fileName });
-      
-      return res.status(201).json(attachment);
+  
+      const attachments = await this.attachmentService.createMultipleAttachments({
+        files,
+        conversationId,
+        uploadedBy
+      });
+
+      await Promise.all(
+        files.map(async (file) => {
+          if (file.path) {
+            try {
+              await fs.unlink(file.path);
+            } catch (err) {
+              console.error('Error deleting uploaded file:', file.path, err.message);
+            }
+          }
+        })
+      );
+
+      return res.status(201).json(attachments);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
   };
+  
 
   getAttachments = async (req, res) => {
     try {
