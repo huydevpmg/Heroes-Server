@@ -15,6 +15,7 @@ class MessageService {
   constructor() {
     this.heroServiceUrl = config.heroServiceUrl || "http://localhost:5000/api";
     this.attachmentService = new AttachmentService();
+    this.userConversationService = new UserConversationService();
   }
 
   async createMessage(messageData) {
@@ -126,12 +127,13 @@ class MessageService {
       // Publish to Redis
       await publish(REDIS_CHANNEL.CHAT_MESSAGE, { conversationId: messageData.conversationId, message: result });
       
+      // Unarchive if archived
       const userConversation = await UserConversation.findOne({
         conversationId: messageData.conversationId,
         userId: messageData.senderId,
       });
       if (userConversation && userConversation.isArchived) {
-        await UserConversationService.toggleArchive(userConversation._id, messageData.senderId);
+        await this.userConversationService.toggleArchive(userConversation._id, messageData.senderId);
       }
   
       return result;
